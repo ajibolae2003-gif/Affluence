@@ -9,11 +9,7 @@ const FALLBACK_API_HOST =
     ? window.location.hostname
     : 'localhost';
 const FALLBACK_API_BASE_URL = `http://${FALLBACK_API_HOST}:5000/api`;
-
-const API_BASE_URL =
-  (import.meta?.env?.VITE_API_URL) ||
-  ((typeof process !== 'undefined' && process.env && process.env.REACT_APP_API_URL) ? process.env.REACT_APP_API_URL : undefined) ||
-  (import.meta?.env?.DEV ? '/api' : FALLBACK_API_BASE_URL);
+const API_BASE_URL = import.meta?.env?.VITE_API_URL || 'https://affluence-86yj.onrender.com/api';
 
 // Helper function for API calls with better error handling
 const apiCall = async (endpoint, options = {}) => {
@@ -257,7 +253,7 @@ const InventorySystem = () => {
         } else {
           console.error('✗ Backend connection failed:', result.error);
           if (result.networkError) {
-            showToast('Cannot connect to backend server. Please ensure Flask backend is running on http://localhost:5000');
+            showToast('Cannot connect to backend server. Please ensure Flask backend is running on http://localhost:5000', "error");
           }
         }
       } catch (error) {
@@ -458,7 +454,7 @@ const InventorySystem = () => {
       } else {
         console.error('Error fetching inventory:', result.error);
         if (result.networkError) {
-          showToast('Cannot connect to backend. Please ensure Flask is running on port 5000.');
+          showToast('Cannot connect to backend. Please ensure Flask is running on port 5000.', "error");
         }
       }
     } catch (error) {
@@ -1640,8 +1636,12 @@ const InventorySystem = () => {
       <header className={`shadow-lg sticky top-0 z-40 ${darkMode ? 'bg-[#0F172A]' : 'bg-[#E2E8F0]'}`}>
         <div className="px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="bg-[#2FB7A1] w-10 h-10 rounded-lg flex items-center justify-center">
-              <Package className="text-white" size={24} />
+            <div className="bg-white w-10 h-10 rounded-lg flex items-center justify-center overflow-hidden">
+            <img
+              src="https://cdn.affluenceglobaldream.com/media/site_logo/1701419965-B88E_crop_-78--p--00_7--p--19_2156--p--00_2148--p--81_0--p--00.png"
+              alt="Affluence Global Logo"
+              className="w-full h-full object-contain"
+            />
             </div>
             <div>
               <h1 className={`text-xl font-semibold ${darkMode ? 'text-white' : 'text-[#1E293B]'}`}>Affluence Global</h1>
