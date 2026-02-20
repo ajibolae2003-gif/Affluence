@@ -1863,7 +1863,7 @@ const InventorySystem = () => {
           </p>
           {calculateStats().lowStockCount > 0 && (
             <span className="text-[10px] font-semibold text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-1.5 py-0.5 rounded-full animate-pulse">
-              showToast
+              Low Stock
             </span>
           )}
         </div>
