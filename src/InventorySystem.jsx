@@ -1693,7 +1693,7 @@ const InventorySystem = () => {
           <select
             value={userRole}
             onChange={(e) => setUserRole(e.target.value)}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium focus:ring-2 focus:ring-[#2FB7A1] focus:outline-none border ${darkMode ? 'bg-white/10 border-white/20 text-white' : 'bg-white/50 border-[#CBD5E1] text-[#1E293B]'}`}
+            className={`max-w-[70px] md:max-w-none md:px-3 py-1.5 rounded-lg text-xs font-medium focus:ring-2 focus:ring-[#2FB7A1] focus:outline-none border ${darkMode ? 'bg-white/10 border-white/20 text-white' : 'bg-white/50 border-[#CBD5E1] text-[#1E293B]'}`}
           >
               <option value="admin" className="text-[#0F172A] dark:text-white">Admin</option>
               <option value="staff" className="text-[#0F172A] dark:text-white">Staff</option>
