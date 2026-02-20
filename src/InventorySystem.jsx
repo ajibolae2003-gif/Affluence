@@ -117,6 +117,7 @@ const InventorySystem = () => {
     return saved ? saved === 'true' : false;
   });
   const [imagePreview, setImagePreview] = useState(null); // For image preview
+  let imageBase64 = null;
   const [customers, setCustomers] = useState([]);
   const [expandedBatchId, setExpandedBatchId] = useState(null);
   const [batchTransactions, setBatchTransactions] = useState([]);
@@ -191,6 +192,26 @@ const InventorySystem = () => {
   };
 
 
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+  
+    // Show local preview immediately
+    setImagePreview(URL.createObjectURL(file));
+  
+    // Upload to server
+    const formData = new FormData();
+    formData.append('file', file);
+  
+    const res = await fetch('http://localhost:5000/api/upload', {
+      method: 'POST',
+      body: formData,
+    });
+    const data = await res.json();
+    setFormData(prev => ({ ...prev, image: data.url }));
+  };
+
+  
   const addNotification = (type, message) => {
     const newNotif = {
       id: Date.now(),
@@ -1631,9 +1652,9 @@ const InventorySystem = () => {
     });
 
   return (
-    <div className={`min-h-screen transition-colors duration-300 ${darkMode ? 'bg-[#0A0A0A]' : 'bg-[#F5F7FA]'}`}>
+    <div className={`min-h-screen transition-colors duration-300 ${darkMode ? 'bg-[#0A0A0A]' : 'bg-[#FAFAF8]'}`}>
       {/* Header */}
-      <header className={`shadow-lg sticky top-0 z-40 ${darkMode ? 'bg-[#0F172A]' : 'bg-[#E2E8F0]'}`}>
+      <header className={`sticky top-0 z-40 border-b ${darkMode ? 'bg-[#0F172A]/95 border-[#1f2937]' : 'bg-white/70 backdrop-blur-md border-[#E7E5E0]'} shadow-sm`}>
         <div className="px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="bg-white w-10 h-10 rounded-lg flex items-center justify-center overflow-hidden">
@@ -1649,18 +1670,31 @@ const InventorySystem = () => {
             </div>
           </div>
           <div className="flex items-center gap-4">
+          {isMobile && userRole === 'admin' && (
             <button
-              onClick={() => setDarkMode(!darkMode)}
-              className={`p-2 rounded-lg transition ${darkMode ? 'bg-white/10 hover:bg-white/20 text-white' : 'bg-white/50 hover:bg-[#CBD5E1] text-[#1E293B]'}`}
-              title={darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+              onClick={() => setActiveTab('settings')}
+              className={`p-2 rounded-lg transition ${
+                activeTab === 'settings'
+                  ? 'bg-[#2FB7A1] text-white'
+                  : darkMode ? 'bg-white/10 hover:bg-white/20 text-white' : 'bg-white/50 hover:bg-[#CBD5E1] text-[#1E293B]'
+              }`}
+              title="Settings"
             >
-              {darkMode ? <Sun size={20} /> : <Moon size={20} />}
+              <Settings size={20} />
             </button>
-            <select
-              value={userRole}
-              onChange={(e) => setUserRole(e.target.value)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium focus:ring-2 focus:ring-[#2FB7A1] focus:outline-none border ${darkMode ? 'bg-white/10 border-white/20 text-white' : 'bg-white/50 border-[#CBD5E1] text-[#1E293B]'}`}
-            >
+          )}
+          <button
+            onClick={() => setDarkMode(!darkMode)}
+            className={`p-2 rounded-lg transition ${darkMode ? 'bg-white/10 hover:bg-white/20 text-white' : 'bg-white/50 hover:bg-[#CBD5E1] text-[#1E293B]'}`}
+            title={darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+          >
+            {darkMode ? <Sun size={20} /> : <Moon size={20} />}
+          </button>
+          <select
+            value={userRole}
+            onChange={(e) => setUserRole(e.target.value)}
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium focus:ring-2 focus:ring-[#2FB7A1] focus:outline-none border ${darkMode ? 'bg-white/10 border-white/20 text-white' : 'bg-white/50 border-[#CBD5E1] text-[#1E293B]'}`}
+          >
               <option value="admin" className="text-[#0F172A] dark:text-white">Admin</option>
               <option value="staff" className="text-[#0F172A] dark:text-white">Staff</option>
             </select>
@@ -1716,7 +1750,11 @@ const InventorySystem = () => {
                   onClick={() => setActiveTab(tab.id)}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition ${
                     activeTab === tab.id
-                      ? 'bg-[#2FB7A1] text-white shadow-lg'
+                      ? darkMode
+                        ? 'bg-white/10 text-white border-l-4 border-[#D97706] pl-3'
+                        : 'bg-[#2FB7A1] text-white shadow-lg'
+                      : darkMode
+                      ? 'text-gray-400 hover:bg-white/5 hover:text-white'
                       : 'text-[#1E293B] hover:bg-[#CBD5E1]'
                   }`}
                 >
@@ -4926,10 +4964,10 @@ const InventorySystem = () => {
         {isMobile && (
           <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#E3E8EF] z-50 shadow-lg">
             <div className="flex justify-around py-2">
-              {tabs.map(tab => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
+            {tabs.filter(tab => tab.id !== 'settings').map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
                   className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition relative ${
                     activeTab === tab.id ? 'text-[#2FB7A1]' : 'text-[#64748B]'
                   }`}
@@ -5637,6 +5675,7 @@ const InventorySystem = () => {
                               const reader = new FileReader();
                               reader.onloadend = () => {
                                 setImagePreview(reader.result);
+                                imageBase64 = reader.result;
                               };
                               reader.readAsDataURL(file);
                             }
@@ -6398,7 +6437,8 @@ const InventorySystem = () => {
                               if (file) {
                                 const reader = new FileReader();
                                 reader.onloadend = () => {
-                                  setPaymentProofPreview(reader.result);
+                                  setImagePreview(reader.result);
+                                  imageBase64 = reader.result;
                                 };
                                 reader.readAsDataURL(file);
                               }
