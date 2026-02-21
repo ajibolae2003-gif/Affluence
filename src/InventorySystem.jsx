@@ -10,8 +10,8 @@ const FALLBACK_API_HOST =
     ? window.location.hostname
     : 'localhost';
 const FALLBACK_API_BASE_URL = `http://${FALLBACK_API_HOST}:5000/api`;
-const API_BASE_URL = import.meta?.env?.VITE_API_URL || 'https://affluence-86yj.onrender.com/api';
-
+//const API_BASE_URL = import.meta?.env?.VITE_API_URL || 'https://affluence-86yj.onrender.com/api';
+const API_BASE_URL = "http://localhost:5000/api"
 // Helper function for API calls with better error handling
 const apiCall = async (endpoint, options = {}) => {
   const url = `${API_BASE_URL}${endpoint.startsWith('/') ? endpoint : '/' + endpoint}`;
@@ -81,7 +81,7 @@ const apiCall = async (endpoint, options = {}) => {
   }
 };
 
-const InventorySystem = () => {
+const InventorySystem = ({ onLogout }) => {
   const [activeTab, setActiveTab] = useState('inventory');
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState('');
@@ -92,6 +92,7 @@ const InventorySystem = () => {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [selectedShipping, setSelectedShipping] = useState(null);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [showLogoutToast, setShowLogoutToast] = useState(false);
   const [customerOrders, setCustomerOrders] = useState([]);
   const [shippingHistory, setShippingHistory] = useState([]);
   const [shippingStatusFilter, setShippingStatusFilter] = useState('All');
@@ -3627,6 +3628,78 @@ const InventorySystem = () => {
       <p>📧 Reports sending to: <span className={`font-semibold ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>{reportSettings.email || 'Not set'}</span></p>
       <p>⏱ Interval: <span className={`font-semibold ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>Every {reportSettings.intervalDays} day{reportSettings.intervalDays !== 1 ? 's' : ''}</span></p>
     </div>
+  {/* Logout Section */}
+{onLogout && (
+  <div className={`rounded-xl border p-6 shadow-sm ${
+    darkMode ? 'bg-[#111827] border-[#1f2937]' : 'bg-white border-[#E3E8EF]'
+  }`}>
+    <div className="flex items-center gap-3 mb-5 pb-4 border-b border-[#E3E8EF] dark:border-[#1f2937]">
+      <div className="w-9 h-9 rounded-lg bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
+        <svg width="18" height="18" fill="none" stroke="#ef4444" strokeWidth="2" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+        </svg>
+      </div>
+      <div>
+        <h3 className={`font-semibold ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>
+          Session
+        </h3>
+        <p className={`text-xs mt-0.5 ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>
+          Signed in as <span className="font-semibold capitalize">{userRole}</span>
+        </p>
+      </div>
+    </div>
+    <button
+      onClick={() => setShowLogoutToast(true)}
+      className="px-5 py-2.5 bg-red-500 hover:bg-red-600 active:bg-red-700 text-white rounded-lg text-sm font-semibold transition shadow-sm"
+    >
+      Sign Out
+    </button>
+  </div>
+)}
+
+{/* Logout Toast */}
+{showLogoutToast && (
+  <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
+    <div className={`flex items-center gap-4 px-5 py-3.5 rounded-xl shadow-2xl border ${
+      darkMode
+        ? 'bg-[#111827] border-[#1f2937] text-white'
+        : 'bg-white border-[#E3E8EF] text-[#0F172A]'
+    }`}>
+      {/* Icon */}
+      <div className="w-8 h-8 rounded-lg bg-red-100 dark:bg-red-900/20 flex items-center justify-center shrink-0">
+        <svg width="16" height="16" fill="none" stroke="#ef4444" strokeWidth="2" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+        </svg>
+      </div>
+      {/* Message */}
+      <div className="mr-2">
+        <p className="text-sm font-semibold">Sign out?</p>
+        <p className={`text-xs mt-0.5 ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>
+          You'll need to log back in to access the portal.
+        </p>
+      </div>
+      {/* Actions */}
+      <div className="flex items-center gap-2 shrink-0">
+        <button
+          onClick={() => setShowLogoutToast(false)}
+          className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition ${
+            darkMode
+              ? 'bg-[#1f2937] hover:bg-[#374151] text-gray-300'
+              : 'bg-gray-100 hover:bg-gray-200 text-[#0F172A]'
+          }`}
+        >
+          Cancel
+        </button>
+        <button
+          onClick={() => { setShowLogoutToast(false); onLogout(); }}
+          className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-red-500 hover:bg-red-600 text-white transition"
+        >
+          Sign Out
+        </button>
+      </div>
+    </div>
+  </div>
+)}
   </div>
 )}
 
