@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Package, Users, Truck, Settings,BarChart3, Search, Plus, X, Upload, ChevronRight, Bell, Eye, TrendingUp, TrendingDown,AlertCircle, Clock, MapPin, Calendar, ShoppingBag, Moon, Sun, DollarSign } from 'lucide-react';
 
+
 // API Configuration - Update with your Flask backend URL
 // Supports both development and production modes
 // Vite uses `import.meta.env.VITE_*`. We also guard `process` to avoid blank-screen crashes in the browser.

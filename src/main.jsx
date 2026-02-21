@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import InventorySystem from './InventorySystem.jsx';
+import AuthWrapper from './AuthWrapper.jsx';  // ← changed
 import './index.css';
 
 // Error Boundary Component
@@ -37,7 +37,7 @@ const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
     <ErrorBoundary>
-      <InventorySystem />
+      <AuthWrapper />  {/* ← changed */}
     </ErrorBoundary>
   </React.StrictMode>
 );
