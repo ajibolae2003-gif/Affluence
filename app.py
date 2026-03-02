@@ -13,7 +13,10 @@ from io import BytesIO
 from datetime import datetime
 import jwt
 import requests
+from dotenv import load_dotenv
+import os
 
+load_dotenv()
 
 import resend
 from apscheduler.schedulers.background import BackgroundScheduler

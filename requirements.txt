@@ -7,3 +7,4 @@ Pyjwt
 resend
 apscheduler
 gunicorn
+python-dotenv
