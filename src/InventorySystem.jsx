@@ -102,6 +102,7 @@ const InventorySystem = ({ onLogout }) => {
   const [productSearchQuery, setProductSearchQuery] = useState('');
   const [selectedProductOrders, setSelectedProductOrders] = useState([]);
   const [productSearchResults, setProductSearchResults] = useState([]);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const [inventorySearchQuery, setInventorySearchQuery] = useState('');
   const [inventoryFilter, setInventoryFilter] = useState('all');
@@ -1744,45 +1745,88 @@ const InventorySystem = ({ onLogout }) => {
       <div className="flex h-[calc(100vh-73px)]">
         {/* Sidebar - Desktop */}
         {!isMobile && (
-          <aside className={`w-64 p-4 ${darkMode ? 'bg-[#1A1A1A] text-white' : 'bg-[#E2E8F0] text-[#1E293B]'}`}>
-            <nav className="space-y-2">
-              {tabs.map(tab => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition ${
-                    activeTab === tab.id
-                      ? darkMode
-                        ? 'bg-white/10 text-white border-l-4 border-[#D97706] pl-3'
-                        : 'bg-[#2FB7A1] text-white shadow-lg'
-                      : darkMode
-                      ? 'text-gray-400 hover:bg-white/5 hover:text-white'
-                      : 'text-[#1E293B] hover:bg-[#CBD5E1]'
-                  }`}
-                >
-                  <tab.icon size={20} />
-                  <span className="font-medium flex-1 text-left">{tab.label}</span>
-                  {tab.badge > 0 && (
-                    <span className="bg-[#DC2626] text-white text-xs rounded-full w-6 h-6 flex items-center justify-center">
-                      {tab.badge}
-                    </span>
-                  )}
-                </button>
-              ))}
-            </nav>
-          </aside>
-        )}
+  <aside
+    className={`relative flex flex-col transition-all duration-300 ease-in-out ${
+      sidebarCollapsed ? 'w-[68px]' : 'w-64'
+    } ${darkMode ? 'bg-[#1A1A1A]' : 'bg-[#E2E8F0]'}`}
+  >
+    {/* Toggle button — inside the sidebar, top right */}
+    <div className={`flex items-center px-3 pt-4 pb-2 ${sidebarCollapsed ? 'justify-center' : 'justify-end'}`}>
+      <button
+        onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+        className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-200 ${
+          darkMode
+            ? 'bg-white/5 hover:bg-white/15 text-gray-400 hover:text-white'
+            : 'bg-[#CBD5E1] hover:bg-[#94A3B8] text-[#475569] hover:text-white'
+        }`}
+        title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+      >
+        {/* Double chevron arrow */}
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className={`transition-transform duration-300 ${sidebarCollapsed ? 'rotate-180' : 'rotate-0'}`}
+        >
+          <polyline points="11 17 6 12 11 7" />
+          <polyline points="18 17 13 12 18 7" />
+        </svg>
+      </button>
+    </div>
+
+    <nav className="flex flex-col gap-1 px-3 pb-3 flex-1 overflow-hidden">
+      {tabs.map(tab => (
+        <button
+          key={tab.id}
+          onClick={() => setActiveTab(tab.id)}
+          title={sidebarCollapsed ? tab.label : undefined}
+          className={`relative flex items-center gap-3 rounded-lg transition-all duration-200 group ${
+            sidebarCollapsed ? 'px-2 py-3 justify-center' : 'px-4 py-3'
+          } ${
+            activeTab === tab.id
+              ? darkMode ? 'bg-white/10 text-white border-l-4 border-[#D97706]' : 'bg-[#2FB7A1] text-white shadow-lg'
+              : darkMode ? 'text-gray-400 hover:bg-white/5 hover:text-white' : 'text-[#1E293B] hover:bg-[#CBD5E1]'
+          }`}
+        >
+          <tab.icon size={20} className="flex-shrink-0" />
+
+          <span className={`font-medium whitespace-nowrap overflow-hidden transition-all duration-300 ${
+            sidebarCollapsed ? 'w-0 opacity-0' : 'w-auto opacity-100'
+          }`}>
+            {tab.label}
+          </span>
+
+          {tab.badge > 0 && (
+            <span className={`absolute bg-[#DC2626] text-white text-xs rounded-full w-5 h-5 flex items-center justify-center ${
+              sidebarCollapsed ? 'top-1 right-1' : 'right-3'
+            }`}>
+              {tab.badge}
+            </span>
+          )}
+
+          {sidebarCollapsed && (
+            <span className="pointer-events-none absolute left-full ml-3 px-2 py-1 rounded-md text-xs font-medium whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity z-50 shadow-lg bg-[#1E293B] text-white">
+              {tab.label}
+              {tab.badge > 0 && <span className="ml-1.5 bg-[#DC2626] text-[10px] rounded-full px-1.5 py-0.5">{tab.badge}</span>}
+            </span>
+          )}
+        </button>
+      ))}
+    </nav>
+  </aside>
+)}
 
         {/* Main Content */}
         <main className="flex-1 overflow-y-auto pb-20 md:pb-4">
           <div className="p-4 md:p-6 max-w-7xl mx-auto">
-            {loading && (
-              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                <div className="bg-white p-6 rounded-lg">
-                  <p className="text-lg">Loading...</p>
-                </div>
-              </div>
-            )}
+          {/* loading overlay removed — skeleton shown inline in table */}
+          
             {/* Inventory Tab */}
             {activeTab === 'inventory' && (
   <div>
@@ -1815,121 +1859,97 @@ const InventorySystem = ({ onLogout }) => {
     </div>
 
 {/* ── Unified Stats Card ── */}
-<div className={`rounded-xl border mb-6 overflow-hidden shadow-sm ${
-  darkMode ? 'bg-[#111827] border-[#1f2937]' : 'bg-white border-[#E3E8EF]'
-}`}>
-  {/* Mobile: 2×2 grid  |  md+: single row */}
-  <div className="grid grid-cols-2 md:grid-cols-4 divide-y md:divide-y-0 divide-x-0 md:divide-x divide-[#E3E8EF] dark:divide-[#1f2937]">
-
-    {/* ── Total Products ── */}
-    <div className={`flex items-center gap-3 px-5 py-4 ${
-      darkMode ? '' : 'bg-white'
-    }`}>
-      <div className="w-9 h-9 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
-        <Package size={18} className="text-blue-600 dark:text-blue-400" />
-      </div>
-      <div className="min-w-0">
-        <p className="text-[11px] font-medium text-[#94A3B8] dark:text-gray-500 uppercase tracking-wide leading-none mb-1">
-          Products
-        </p>
-        <p className="text-2xl font-bold text-blue-600 dark:text-blue-400 leading-none">
-          {inventory.length}
-        </p>
-      </div>
-    </div>
-
-    {/* ── In Stock ── */}
-    <div className={`flex items-center gap-3 px-5 py-4 border-l border-[#E3E8EF] dark:border-[#1f2937] ${
-      darkMode ? '' : 'bg-white'
-    }`}>
-      <div className="w-9 h-9 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center flex-shrink-0">
-        <TrendingUp size={18} className="text-emerald-600 dark:text-emerald-400" />
-      </div>
-      <div className="min-w-0">
-        <p className="text-[11px] font-medium text-[#94A3B8] dark:text-gray-500 uppercase tracking-wide leading-none mb-1">
-          In Stock
-        </p>
-        <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 leading-none">
-          {calculateStats().totalStock.toLocaleString()}
-        </p>
-      </div>
-    </div>
-
-    {/* ── Total Sold ── */}
-    <div className={`flex items-center gap-3 px-5 py-4 border-t md:border-t-0 border-l md:border-l border-[#E3E8EF] dark:border-[#1f2937] ${
-      darkMode ? '' : 'bg-white'
-    }`}>
-      <div className="w-9 h-9 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center flex-shrink-0">
-        <ShoppingBag size={18} className="text-purple-600 dark:text-purple-400" />
-      </div>
-      <div className="min-w-0">
-        <p className="text-[11px] font-medium text-[#94A3B8] dark:text-gray-500 uppercase tracking-wide leading-none mb-1">
-          Sold
-        </p>
-        <p className="text-2xl font-bold text-purple-600 dark:text-purple-400 leading-none">
-          {calculateStats().totalSold.toLocaleString()}
-        </p>
-      </div>
-    </div>
-
-    {/* ── Low Stock ── */}
-    <div className={`flex items-center gap-3 px-5 py-4 border-t md:border-t-0 border-[#E3E8EF] dark:border-[#1f2937] md:border-l ${
-      darkMode ? '' : 'bg-white'
-    }`}>
-      <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${
-        calculateStats().lowStockCount > 0
-          ? 'bg-red-100 dark:bg-red-900/30'
-          : 'bg-gray-100 dark:bg-gray-800'
-      }`}>
-        <showToastCircle
-          size={18}
-          className={calculateStats().lowStockCount > 0
-            ? 'text-red-600 dark:text-red-400'
-            : 'text-gray-400 dark:text-gray-600'
-          }
-        />
-      </div>
-      <div className="min-w-0">
-        <p className="text-[11px] font-medium text-[#94A3B8] dark:text-gray-500 uppercase tracking-wide leading-none mb-1">
-          Low Stock
-        </p>
-        <div className="flex items-center gap-2">
-          <p className={`text-2xl font-bold leading-none ${
-            calculateStats().lowStockCount > 0
-              ? 'text-red-600 dark:text-red-400'
-              : 'text-gray-400 dark:text-gray-600'
-          }`}>
-            {calculateStats().lowStockCount}
-          </p>
-          {calculateStats().lowStockCount > 0 && (
-            <span className="text-[10px] font-semibold text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-1.5 py-0.5 rounded-full animate-pulse">
-              Low Stock
+{/* ── Stats Cards ── */}
+<div className="mb-6">
+  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+    {[
+      {
+        label: 'Total Products',
+        value: inventory.length,
+        sub: `${getUniqueCategories().length} categories`,
+        icon: <Package size={16} />,
+        accent: '#3B82F6',
+        bg: darkMode ? 'rgba(59,130,246,0.08)' : '#EFF6FF',
+        border: darkMode ? 'rgba(59,130,246,0.2)' : '#BFDBFE',
+        textColor: '#3B82F6',
+      },
+      {
+        label: 'In Stock',
+        value: calculateStats().totalStock.toLocaleString(),
+        sub: `${inventory.filter(i => i.quantity >= 50).length} healthy`,
+        icon: <TrendingUp size={16} />,
+        accent: '#10B981',
+        bg: darkMode ? 'rgba(16,185,129,0.08)' : '#ECFDF5',
+        border: darkMode ? 'rgba(16,185,129,0.2)' : '#A7F3D0',
+        textColor: '#10B981',
+      },
+      {
+        label: 'Units Sold',
+        value: calculateStats().totalSold.toLocaleString(),
+        sub: `across ${inventory.length} products`,
+        icon: <ShoppingBag size={16} />,
+        accent: '#8B5CF6',
+        bg: darkMode ? 'rgba(139,92,246,0.08)' : '#F5F3FF',
+        border: darkMode ? 'rgba(139,92,246,0.2)' : '#DDD6FE',
+        textColor: '#8B5CF6',
+      },
+      {
+        label: 'Low Stock',
+        value: calculateStats().lowStockCount,
+        sub: calculateStats().lowStockCount > 0 ? 'needs restocking' : 'all healthy',
+        icon: <AlertCircle size={16} />,
+        accent: calculateStats().lowStockCount > 0 ? '#EF4444' : '#6B7280',
+        bg: calculateStats().lowStockCount > 0 ? (darkMode ? 'rgba(239,68,68,0.08)' : '#FEF2F2') : (darkMode ? 'rgba(107,114,128,0.08)' : '#F9FAFB'),
+        border: calculateStats().lowStockCount > 0 ? (darkMode ? 'rgba(239,68,68,0.25)' : '#FECACA') : (darkMode ? 'rgba(107,114,128,0.2)' : '#E5E7EB'),
+        textColor: calculateStats().lowStockCount > 0 ? '#EF4444' : '#6B7280',
+        pulse: calculateStats().lowStockCount > 0,
+      },
+    ].map((card, i) => (
+      <div
+        key={i}
+        className="relative rounded-xl border overflow-hidden stat-animate"
+        style={{ background: card.bg, borderColor: card.border, animationDelay: `${i * 80}ms` }}
+      >
+        <div className="h-[3px] w-full" style={{ background: card.accent }} />
+        <div className="px-4 py-3">
+          <div className="flex items-center justify-between mb-2">
+            <p className={`text-[11px] font-semibold uppercase tracking-widest ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+              {card.label}
+            </p>
+            <span className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: card.accent + '22', color: card.accent }}>
+              {card.icon}
             </span>
-          )}
+          </div>
+          <p className="text-2xl font-bold leading-none mb-1" style={{ color: card.textColor }}>
+            {card.value}
+            {card.pulse && (
+              <span className="inline-block ml-2 w-2 h-2 rounded-full align-middle animate-pulse" style={{ background: card.accent }} />
+            )}
+          </p>
+          <p className={`text-[11px] mt-1 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>{card.sub}</p>
         </div>
       </div>
-    </div>
-
+    ))}
   </div>
-
-  {/* ── Thin revenue footer bar ── */}
-  <div className={`px-5 py-2.5 border-t flex items-center justify-between ${
-    darkMode
-      ? 'bg-[#0d1117] border-[#1f2937]'
-      : 'bg-[#F8FAFC] border-[#E3E8EF]'
-  }`}>
-    <span className={`text-[11px] font-medium uppercase tracking-wide ${
-      darkMode ? 'text-gray-500' : 'text-[#94A3B8]'
-    }`}>
-      Total Revenue
-    </span>
-    <span className={`text-sm font-bold ${
-      darkMode ? 'text-[#2FB7A1]' : 'text-[#2FB7A1]'
-    }`}>
+  <div
+    className="rounded-xl border px-5 py-3 flex items-center justify-between"
+    style={{
+      background: darkMode
+        ? 'linear-gradient(135deg, rgba(47,183,161,0.08) 0%, rgba(31,58,95,0.15) 100%)'
+        : 'linear-gradient(135deg, rgba(47,183,161,0.06) 0%, rgba(31,58,95,0.04) 100%)',
+      borderColor: darkMode ? 'rgba(47,183,161,0.2)' : 'rgba(47,183,161,0.15)',
+    }}
+  >
+    <div className="flex items-center gap-2">
+      <DollarSign size={15} className="text-[#2FB7A1]" />
+      <span className={`text-xs font-bold uppercase tracking-widest ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Total Revenue</span>
+    </div>
+    <span className="text-lg font-bold text-[#2FB7A1]">
       ₦{calculateStats().totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
     </span>
   </div>
 </div>
+{/* ── End Stats Cards ── */}
 {/* ── End Unified Stats Card ── */}
 
     {/* Search and Filter Bar */}
@@ -2009,175 +2029,234 @@ const InventorySystem = ({ onLogout }) => {
       </div>
     </div>
 
-    {/* Desktop Table View - Streamlined */}
-    {!isMobile ? (
-      <div className={`rounded-xl border overflow-hidden shadow-sm ${
+{/* Desktop Table View */}
+{!isMobile ? (
+  loading ? (
+    <div className={`rounded-xl border overflow-hidden ${darkMode ? 'bg-[#020617] border-[#1f2937]' : 'bg-white border-[#E3E8EF]'}`}>
+      <div className={`px-6 py-4 border-b grid grid-cols-5 gap-4 ${darkMode ? 'bg-[#111827] border-[#1f2937]' : 'bg-[#F8FAFC] border-[#E3E8EF]'}`}>
+        {['40%','15%','15%','15%','15%'].map((w,i) => (
+          <div key={i} className="h-3 rounded-full skeleton-shimmer" style={{width:w}} />
+        ))}
+      </div>
+      {Array.from({length:6}).map((_,i) => (
+        <div key={i} className={`px-6 py-4 border-b grid grid-cols-5 gap-4 items-center ${darkMode ? 'border-[#1f2937]' : 'border-[#F1F5F9]'}`}>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg skeleton-shimmer flex-shrink-0" />
+            <div className="space-y-2 flex-1">
+              <div className="h-3 rounded-full skeleton-shimmer w-3/4" />
+              <div className="h-2 rounded-full skeleton-shimmer w-1/2" />
+            </div>
+          </div>
+          {[1,2,3,4].map(j => (
+            <div key={j} className="flex flex-col items-center gap-2">
+              <div className="h-3 rounded-full skeleton-shimmer w-12" />
+              <div className="h-1.5 rounded-full skeleton-shimmer w-16" />
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  ) : (
+    <div className={`rounded-xl border overflow-hidden shadow-sm ${
         darkMode ? 'bg-[#020617] border-[#1f2937]' : 'bg-white dark:bg-[#1A1A1A] border-[#E3E8EF] dark:border-[#2A2A2A]'
       }`}>
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className={`border-b-2 ${darkMode ? 'bg-[#111827] border-[#1f2937]' : 'bg-gradient-to-r from-[#F5F7FA] to-white border-[#E3E8EF]'}`}>
-              <tr>
-                <th className={`px-6 py-4 text-left text-xs font-bold uppercase tracking-wider ${darkMode ? 'text-gray-400' : 'text-[#1F3A5F]'}`}>Product Details</th>
-                <th className={`px-6 py-4 text-center text-xs font-bold uppercase tracking-wider ${darkMode ? 'text-gray-400' : 'text-[#1F3A5F]'}`}>Stock Level</th>
-                <th className={`px-6 py-4 text-center text-xs font-bold uppercase tracking-wider ${darkMode ? 'text-gray-400' : 'text-[#1F3A5F]'}`}>Performance</th>
-                <th className="px-6 py-4 text-right text-xs font-bold text-[#1F3A5F] uppercase tracking-wider">Pricing</th>
-                <th className={`px-6 py-4 text-center text-xs font-bold uppercase tracking-wider ${darkMode ? 'text-gray-400' : 'text-[#1F3A5F]'}`}>Status</th>
-                {userRole === 'staff' && (
-                  <th className={`px-6 py-4 text-center text-xs font-bold uppercase tracking-wider ${darkMode ? 'text-gray-400' : 'text-[#1F3A5F]'}`}>Actions</th>
-                )}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#E3E8EF]">
-              {filteredInventory.length === 0 ? (
-                <tr>
-                  <td colSpan={userRole === 'staff' ? 6 : 5} className="px-6 py-16 text-center">
-                    <Package size={48} className="mx-auto text-[#E3E8EF] mb-3" />
-                    <p className="text-[#64748B] font-medium">No products found</p>
-                    <p className="text-sm text-[#94A3B8] mt-1">Try adjusting your search or filters</p>
-                  </td>
-                </tr>
-              ) : (
-                filteredInventory.map(item => (
-                  <tr 
-                    key={item.id} 
-                    className={`transition cursor-pointer group ${darkMode ? 'hover:bg-[#111827]' : 'hover:bg-[#F5F7FA]'}`} 
-                    onClick={() => setSelectedProduct(item)}
-                  >
-                    {/* Product Details */}
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 bg-gradient-to-br from-[#2FB7A1] to-[#1F3A5F] rounded-lg flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
-                          {item.name.substring(0, 2).toUpperCase()}
-                        </div>
-                        <div className="min-w-0">
-                          <div className={`font-semibold group-hover:text-[#2FB7A1] transition ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>{item.name}</div>
-                          <div className="text-xs text-[#64748B] font-mono mt-1">ID: {item.id}</div>
-                          <div className="text-xs text-[#94A3B8] mt-0.5">Received: {item.dateReceived}</div>
-                        </div>
-                      </div>
-                    </td>
+          <thead>
+            <tr className={`${darkMode ? 'bg-[#0d1117]' : 'bg-[#F1F5F9]'}`}>
+              <th className="w-1 p-0" />
+              {[
+                { label: 'Product',  align: 'left'   },
+                { label: 'Category', align: 'left'   },
+                { label: 'Stock',    align: 'center' },
+                { label: 'Sold',     align: 'center' },
+                { label: 'Price',    align: 'right'  },
+                { label: 'Margin',   align: 'right'  },
+                { label: 'Status',   align: 'center' },
+                ...(userRole === 'admin' ? [{ label: '', align: 'center' }] : []),
+                ...(userRole === 'staff' ? [{ label: '', align: 'center' }] : []),
+              ].map((col, i) => (
+                <th key={i} className={`px-3 py-3 text-[10px] font-bold uppercase tracking-widest border-b text-${col.align} ${darkMode ? 'text-gray-500 border-[#1f2937]' : 'text-[#94A3B8] border-[#E3E8EF]'}`}>
+                  {col.label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+  {filteredInventory.length === 0 ? (
+    <tr>
+      <td colSpan={9} className="py-20 text-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${darkMode ? 'bg-[#1f2937]' : 'bg-[#F1F5F9]'}`}>
+            <Package size={24} className={darkMode ? 'text-gray-600' : 'text-[#CBD5E1]'} />
+          </div>
+          <p className={`font-semibold text-sm ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>No products found</p>
+          <p className={`text-xs ${darkMode ? 'text-gray-600' : 'text-[#94A3B8]'}`}>Adjust your search or filters</p>
+        </div>
+      </td>
+    </tr>
+  ) : (
+    filteredInventory.map((item, idx) => {
+      const isOut      = item.quantity === 0;
+      const isCritical = !isOut && item.quantity < 20;
+      const isLow      = !isOut && !isCritical && item.quantity < 50;
+      const stockTotal = (item.quantity ?? 0) + (item.sold ?? 0);
+      const stockPct   = stockTotal > 0 ? Math.min(((item.quantity ?? 0) / stockTotal) * 100, 100) : 0;
+      const accentColor = isOut || isCritical ? '#EF4444' : isLow ? '#F59E0B' : '#10B981';
+      const margin = Number(item.price ?? 0) - Number(item.cost ?? 0);
+      const marginPct = item.price > 0 ? ((margin / item.price) * 100).toFixed(0) : 0;
+      const itemCategory = productCategories[item.id] || item.category || 'Uncategorized';
+      const statusCfg = isOut
+        ? { label: 'Out of Stock', cls: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' }
+        : isCritical
+        ? { label: 'Critical',     cls: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 animate-pulse' }
+        : isLow
+        ? { label: 'Low Stock',    cls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' }
+        : { label: 'In Stock',     cls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' };
 
-                {/* Stock Level */}
-                    <td className="px-6 py-4">
-                      <div className="flex flex-col items-center gap-1">
-                        <div className="flex items-baseline gap-1">
-                      <span className="text-2xl font-bold text-[#0F172A] dark:text-white">{item.quantity ?? 0}</span>
-                          <span className="text-xs text-[#64748B] dark:text-gray-400">units</span>
-                        </div>
-                        <div className="w-full bg-[#E3E8EF] rounded-full h-1.5 max-w-[100px]">
-                          <div 
-                            className={`h-1.5 rounded-full transition-all ${
-                          (item.quantity ?? 0) > 50 ? 'bg-green-500' : 
-                          (item.quantity ?? 0) > 20 ? 'bg-yellow-500' : 
-                              'bg-red-500'
-                            }`}
-                        style={{
-                          width: `${Math.min(
-                            ((item.quantity ?? 0) + (item.sold ?? 0)) > 0
-                              ? ((item.quantity ?? 0) / ((item.quantity ?? 0) + (item.sold ?? 0))) * 100
-                              : 0,
-                            100
-                          )}%`
-                        }}
-                          ></div>
-                        </div>
-                      </div>
-                    </td>
+      return (
+        <tr
+          key={item.id}
+          onClick={() => setSelectedProduct(item)}
+          className={`group cursor-pointer border-b transition-colors row-fadeIn ${darkMode ? 'border-[#0f172a] hover:bg-[#0f172a]' : 'border-[#F8FAFC] hover:bg-[#F8FAFC]'}`}
+          style={{ animationDelay: `${idx * 30}ms` }}
+        >
+          {/* Accent bar */}
+          <td className="p-0 w-1">
+            <div className="w-[3px] min-h-[52px] opacity-0 group-hover:opacity-100 transition-opacity rounded-r-full" style={{ background: accentColor }} />
+          </td>
 
-                    {/* Performance */}
-                    <td className="px-6 py-4">
-                      <div className="flex flex-col items-center gap-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm text-[#64748B] dark:text-gray-400">Sold:</span>
-                      <span className="font-semibold text-[#2563EB]">{item.sold ?? 0}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-[#94A3B8]">Total:</span>
-                      <span className="text-xs font-medium text-[#64748B] dark:text-gray-400">
-                        {(item.quantity ?? 0) + (item.sold ?? 0)}
-                      </span>
-                        </div>
-                      </div>
-                    </td>
+          {/* Product */}
+          <td className="px-3 py-3">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg flex items-center justify-center text-white text-[11px] font-bold flex-shrink-0 shadow-sm"
+                style={{ background: `linear-gradient(135deg, ${accentColor}cc, ${accentColor}55)` }}>
+                {item.name.substring(0, 2).toUpperCase()}
+              </div>
+              <div className="min-w-0">
+                <p className={`font-semibold text-sm truncate group-hover:text-[#2FB7A1] transition-colors ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>
+                  {item.name}
+                </p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className={`font-mono text-[10px] ${darkMode ? 'text-gray-600' : 'text-[#CBD5E1]'}`}>{item.id}</span>
+                  <span className={`text-[10px] ${darkMode ? 'text-gray-600' : 'text-[#CBD5E1]'}`}>·</span>
+                  <span className={`text-[10px] ${darkMode ? 'text-gray-600' : 'text-[#94A3B8]'}`}>{item.dateReceived}</span>
+                </div>
+              </div>
+            </div>
+          </td>
 
-                    {/* Pricing */}
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex flex-col items-end gap-1">
-                        <button
-                          type="button"
-                          className={`font-bold text-lg ${userRole === 'admin' ? 'text-[#2FB7A1] hover:underline' : darkMode ? 'text-white cursor-default' : 'text-[#0F172A] cursor-default'}`}
-                          onClick={(e) => {
-                            if (userRole !== 'admin') return;
-                            e.stopPropagation();
-                            setProductToEdit(item);
-                            openModal('editProduct');
-                          }}
-                        >
-                          ₦{(item.price ?? 0).toFixed ? item.price.toFixed(2) : Number(item.price ?? 0).toFixed(2)}
-                        </button>
-                        <div className="text-xs text-[#64748B] dark:text-gray-400">
-                          Cost: ₦{(item.cost ?? 0).toFixed ? item.cost.toFixed(2) : Number(item.cost ?? 0).toFixed(2)}
-                        </div>
-                        <div className="text-xs font-medium text-green-600">
-                          {(() => {
-                            const price = Number(item.price ?? 0);
-                            const cost = Number(item.cost ?? 0);
-                            const margin = price - cost;
-                            return `Margin: ₦${margin.toFixed(2)}`;
-                          })()}
-                        </div>
-                        {item.label && (
-                          <div className="text-[10px] text-[#94A3B8] mt-1">
-                            Label: <span className="font-medium text-[#0F172A] dark:text-white">{item.label}</span>
-                          </div>
-                        )}
-                      </div>
-                    </td>
+          {/* Category */}
+          <td className="px-3 py-3">
+            <span className={`inline-block text-[10px] font-semibold px-2 py-1 rounded-md ${darkMode ? 'bg-[#1f2937] text-gray-400' : 'bg-[#F1F5F9] text-[#64748B]'}`}>
+              {itemCategory}
+            </span>
+          </td>
 
-                    {/* Status */}
-                    <td className="px-6 py-4">
-                      <div className="flex justify-center">
-                        {item.quantity === 0 ? (
-                          <span className="px-3 py-1.5 rounded-full text-xs font-bold bg-red-100 text-red-700 border border-red-200">
-                            OUT OF STOCK
-                          </span>
-                        ) : item.quantity < 20 ? (
-                          <span className="px-3 py-1.5 rounded-full text-xs font-bold bg-red-100 text-red-700 border border-red-200 animate-pulse">
-                            CRITICAL
-                          </span>
-                        ) : item.quantity < 50 ? (
-                          <span className="px-3 py-1.5 rounded-full text-xs font-bold bg-yellow-100 text-yellow-700 border border-yellow-200">
-                            LOW STOCK
-                          </span>
-                        ) : (
-                          <span className="px-3 py-1.5 rounded-full text-xs font-bold bg-green-100 text-green-700 border border-green-200">
-                            IN STOCK
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    {userRole === 'staff' && (
-                      <td className="px-6 py-4">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setProductToUpdate(item);
-                            openModal('addQuantity');
-                          }}
-                          className="bg-[#2563EB] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition"
-                        >
-                          Add Quantity
-                        </button>
-                      </td>
-                    )}
-                  </tr>
-                ))
-              )}
-            </tbody>
+          {/* Stock */}
+          <td className="px-3 py-3">
+            <div className="flex flex-col items-center gap-1.5">
+              <span className={`text-sm font-bold tabular-nums ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>{item.quantity ?? 0}</span>
+              <div className={`w-16 h-1.5 rounded-full overflow-hidden ${darkMode ? 'bg-[#1f2937]' : 'bg-[#E3E8EF]'}`}>
+                <div className="h-full rounded-full transition-all duration-700" style={{ width: `${stockPct}%`, background: accentColor }} />
+              </div>
+              <span className={`text-[9px] ${darkMode ? 'text-gray-600' : 'text-[#CBD5E1]'}`}>of {stockTotal}</span>
+            </div>
+          </td>
+
+          {/* Sold */}
+          <td className="px-3 py-3 text-center">
+            <span className="text-sm font-bold tabular-nums text-[#2FB7A1]">{item.sold ?? 0}</span>
+          </td>
+
+          {/* Price */}
+          <td className="px-3 py-3 text-right">
+            <button
+              type="button"
+              onClick={(e) => { if (userRole !== 'admin') return; e.stopPropagation(); setProductToEdit(item); openModal('editProduct'); }}
+              className={`text-sm font-bold tabular-nums ${userRole === 'admin' ? 'text-[#2FB7A1] hover:underline' : darkMode ? 'text-white cursor-default' : 'text-[#0F172A] cursor-default'}`}
+            >
+              ₦{Number(item.price ?? 0).toLocaleString()}
+            </button>
+            <p className={`text-[10px] mt-0.5 ${darkMode ? 'text-gray-600' : 'text-[#CBD5E1]'}`}>cost ₦{Number(item.cost ?? 0).toLocaleString()}</p>
+          </td>
+
+          {/* Margin */}
+          <td className="px-3 py-3 text-right">
+            <span className={`text-sm font-bold tabular-nums ${margin >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>{marginPct}%</span>
+            <p className={`text-[10px] mt-0.5 ${darkMode ? 'text-gray-600' : 'text-[#CBD5E1]'}`}>₦{margin.toLocaleString()}</p>
+          </td>
+
+          {/* Status */}
+          <td className="px-3 py-3 text-center">
+            <span className={`inline-block text-[10px] font-bold px-2 py-1 rounded-full whitespace-nowrap ${statusCfg.cls}`}>
+              {statusCfg.label}
+            </span>
+          </td>
+
+          {/* Admin edit */}
+          {userRole === 'admin' && (
+            <td className="px-2 py-3 text-center">
+              <button
+                onClick={(e) => { e.stopPropagation(); setProductToEdit(item); openModal('editProduct'); }}
+                className={`w-7 h-7 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all mx-auto ${darkMode ? 'bg-[#1f2937] hover:bg-[#374151] text-gray-400 hover:text-white' : 'bg-[#F1F5F9] hover:bg-[#E3E8EF] text-[#64748B]'}`}
+              >
+                <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+              </button>
+            </td>
+          )}
+
+          {/* Staff add qty */}
+          {userRole === 'staff' && (
+            <td className="px-3 py-3 text-center">
+              <button
+                onClick={(e) => { e.stopPropagation(); setProductToUpdate(item); openModal('addQuantity'); }}
+                className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-blue-500 hover:bg-blue-600 text-white transition"
+              >
+                + Add Qty
+              </button>
+            </td>
+          )}
+        </tr>
+      );
+    })
+  )}
+</tbody>
+<tfoot>
+  {filteredInventory.length > 0 && (
+    <tr className={`${darkMode ? 'bg-[#0d1117] border-t border-[#1f2937]' : 'bg-[#F8FAFC] border-t border-[#E3E8EF]'}`}>
+      <td className="w-1" />
+      <td className="px-3 py-2.5">
+        <span className={`text-[11px] font-bold uppercase tracking-widest ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>
+          {filteredInventory.length} products
+        </span>
+      </td>
+      <td />
+      <td className="px-3 py-2.5 text-center">
+        <span className={`text-xs font-bold tabular-nums ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>
+          {filteredInventory.reduce((s, i) => s + (i.quantity ?? 0), 0).toLocaleString()}
+        </span>
+      </td>
+      <td className="px-3 py-2.5 text-center">
+        <span className="text-xs font-bold tabular-nums text-[#2FB7A1]">
+          {filteredInventory.reduce((s, i) => s + (i.sold ?? 0), 0).toLocaleString()}
+        </span>
+      </td>
+      <td colSpan={4} className="px-3 py-2.5 text-right">
+        <span className="text-xs font-bold tabular-nums text-[#2FB7A1]">
+          ₦{filteredInventory.reduce((s, i) => s + (i.sold ?? 0) * (i.price ?? 0), 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        </span>
+      </td>
+    </tr>
+  )}
+</tfoot>
           </table>
         </div>
       </div>
+  )
 ) : (
   // Mobile Card View — compact & scannable
   <div className="space-y-2">

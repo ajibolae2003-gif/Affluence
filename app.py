@@ -11,7 +11,7 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, Tabl
 from reportlab.lib.enums import TA_CENTER, TA_RIGHT, TA_LEFT
 from io import BytesIO
 from datetime import datetime
-
+import jwt
 import requests
 
 
@@ -1462,6 +1462,50 @@ def export_sales_pdf():
         import traceback
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
+
+
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")
+
+GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET")
+
+@app.route('/api/auth/google/callback', methods=['POST'])
+def google_oauth_callback():
+    try:
+        data = request.get_json()
+        code = data.get('code')
+        if not code:
+            return jsonify({'error': 'No code provided'}), 400
+
+        # Exchange code for tokens
+        token_response = requests.post('https://oauth2.googleapis.com/token', data={
+            'code': code,
+            'client_id': GOOGLE_CLIENT_ID,
+            'client_secret': GOOGLE_CLIENT_SECRET,
+            'redirect_uri': request.headers.get('Origin', 'http://localhost:5173') + '/auth/callback',
+            'grant_type': 'authorization_code',
+        })
+
+        if not token_response.ok:
+            return jsonify({'error': 'Token exchange failed', 'details': token_response.text}), 400
+
+        tokens = token_response.json()
+        id_token = tokens.get('id_token')
+
+        # Decode the ID token (no signature verify needed — Google already validated it)
+        profile = jwt.decode(id_token, options={"verify_signature": False})
+
+        return jsonify({
+            'email':   profile.get('email'),
+            'name':    profile.get('name'),
+            'picture': profile.get('picture'),
+        }), 200
+
+    except Exception as e:
+        import traceback
+        print(f"OAuth callback error: {traceback.format_exc()}")
+        return jsonify({'error': str(e)}), 500
+
+
 
 @app.route('/api/shipping/<order_id>/history', methods=['GET'])
 def get_shipping_history(order_id):
