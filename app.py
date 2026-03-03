@@ -13,10 +13,7 @@ from io import BytesIO
 from datetime import datetime
 import jwt
 import requests
-from dotenv import load_dotenv
-import os
 
-load_dotenv()
 
 import resend
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -1467,7 +1464,9 @@ def export_sales_pdf():
         return jsonify({'error': str(e)}), 500
 
 
-GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
+GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
+
 
 GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET")
 
