@@ -10,7 +10,7 @@ const FALLBACK_API_HOST =
     ? window.location.hostname
     : 'localhost';
 const FALLBACK_API_BASE_URL = `http://${FALLBACK_API_HOST}:5000/api`;
-const API_BASE_URL =  'https://affluence-86yj.onrender.com/api';
+const API_BASE_URL =  'https://affluence-86yj.onrender.com';
 //const API_BASE_URL = "http://localhost:5000/api"
 // Helper function for API calls with better error handling
 const apiCall = async (endpoint, options = {}) => {
