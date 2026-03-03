@@ -11,6 +11,7 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, Tabl
 from reportlab.lib.enums import TA_CENTER, TA_RIGHT, TA_LEFT
 from io import BytesIO
 from datetime import datetime
+from dotenv import load_dotenv
 import jwt
 import requests
 
@@ -19,12 +20,13 @@ import resend
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 import atexit
+from pathlib import Path
 
 resend.api_key = "re_3YXkitfT_JNgrf6SfSazPjMXsDLW2tX4n"
 REPORT_EMAIL = "ajibolae2003@gmail.com"
 REPORT_INTERVAL_DAYS = 7  # Change this to whatever interval you want
 app = Flask(__name__)
-
+load_dotenv(dotenv_path=Path(__file__).parent / ".env")
 # Enhanced CORS configuration - Allow all origins for development
 # For production, replace '*' with specific origins
 # Set automatic_options=True to handle OPTIONS automatically
