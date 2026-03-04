@@ -1485,7 +1485,7 @@ def google_oauth_callback():
             'code': code,
             'client_id': GOOGLE_CLIENT_ID,
             'client_secret': GOOGLE_CLIENT_SECRET,
-            'redirect_uri': request.headers.get('Origin', 'https://affluence-gilt.vercel.app') + '/auth/callback',
+            'redirect_uri': data.get('redirect_uri', 'https://affluence-gilt.vercel.app/auth/callback'),
             'grant_type': 'authorization_code',
         })
 

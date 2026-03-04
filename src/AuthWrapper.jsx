@@ -13,7 +13,10 @@ async function exchangeCodeForProfile(code) {
   const res = await fetch(TOKEN_EXCHANGE_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ code }),
+    body: JSON.stringify({ 
+      code,
+      redirect_uri: window.location.origin + '/auth/callback'
+    }),
   });
   if (!res.ok) throw new Error(`Token exchange failed: ${res.statusText}`);
   // Expected response: { email, name, picture, ... }
