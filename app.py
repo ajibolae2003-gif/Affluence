@@ -1490,6 +1490,7 @@ def google_oauth_callback():
         })
 
         if not token_response.ok:
+            print('Google token error:', token_response.text)  # ← add this
             return jsonify({'error': 'Token exchange failed', 'details': token_response.text}), 400
 
         tokens = token_response.json()
