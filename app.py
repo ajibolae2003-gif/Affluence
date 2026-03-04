@@ -38,7 +38,7 @@ CORS(app,
      }},
      supports_credentials=False,
      automatic_options=True)
-     
+
 # Database configuration - Using SQLite for simplicity, can be changed to PostgreSQL
 basedir = os.path.abspath(os.path.dirname(__file__))
 app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(basedir, "inventory.db")}'
@@ -1485,7 +1485,7 @@ def google_oauth_callback():
             'code': code,
             'client_id': GOOGLE_CLIENT_ID,
             'client_secret': GOOGLE_CLIENT_SECRET,
-            'redirect_uri': request.headers.get('Origin', 'http://localhost:5173') + '/auth/callback',
+            'redirect_uri': request.headers.get('Origin', 'https://affluence-gilt.vercel.app') + '/auth/callback',
             'grant_type': 'authorization_code',
         })
 
