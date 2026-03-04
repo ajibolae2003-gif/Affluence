@@ -32,13 +32,13 @@ load_dotenv(dotenv_path=Path(__file__).parent / ".env")
 # Set automatic_options=True to handle OPTIONS automatically
 CORS(app, 
      resources={r"/api/*": {
-         "origins": "*",
+         "origins": ["http://localhost:5173", "https://affluence-gilt.vercel.app"],
          "methods": ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
          "allow_headers": ["Content-Type", "Authorization"]
      }},
      supports_credentials=False,
      automatic_options=True)
-
+     
 # Database configuration - Using SQLite for simplicity, can be changed to PostgreSQL
 basedir = os.path.abspath(os.path.dirname(__file__))
 app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(basedir, "inventory.db")}'
