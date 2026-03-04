@@ -2963,7 +2963,7 @@ const InventorySystem = ({ onLogout }) => {
               Shipping
             </h2>
             <p className={`text-xs mt-0.5 ${darkMode ? 'text-gray-500' : 'text-[#6B7280]'}`}>
-              {shippingQueue.length} orders · {notifications} pending
+            {shippingQueue.length} orders · {notifications.filter(n => !n.read).length} pending
             </p>
           </div>
           <button className={`text-xs px-3 py-1.5 rounded-md font-medium border transition ${
