@@ -3,11 +3,11 @@ import LoginPage, { getRoleFromGoogleProfile } from './LoginPage';
 import InventorySystem from './InventorySystem';
 
 const SESSION_KEY = 'affluence_session';
-
+APP_BASE_URL = 'https://affluence-86yj.onrender.com/api';
 // ─── Token Exchange ────────────────────────────────────────────────────────────
 // In production this MUST be done server-side to protect your client_secret.
 // Point this at your own backend endpoint (e.g. /api/auth/google/callback).
-const TOKEN_EXCHANGE_URL = '/api/auth/google/callback';
+const TOKEN_EXCHANGE_URL = `${API_BASE_URL}/auth/google/callback`;
 
 async function exchangeCodeForProfile(code) {
   const res = await fetch(TOKEN_EXCHANGE_URL, {
