@@ -5,6 +5,7 @@ const SESSION_KEY = 'affluence_session';
 // ─── Token Exchange ────────────────────────────────────────────────────────────
 // In production this MUST be done server-side to protect your client_secret.
 // Point this at your own backend endpoint (e.g. /api/auth/google/callback).
+const API_BASE_URL = 'https://affluence-86yj.onrender.com/api';
 const TOKEN_EXCHANGE_URL = `${API_BASE_URL}/auth/google/callback`;
 
 async function exchangeCodeForProfile(code) {
