@@ -910,7 +910,7 @@ const InventorySystem = ({ onLogout }) => {
   const handleAddOrder = async (formData) => {
     try {
       setLoading(true);
-
+  
       const basePayload = {
         customerName: formData.customerName,
         username: formData.username || selectedCustomerData?.username || '',
@@ -926,66 +926,27 @@ const InventorySystem = ({ onLogout }) => {
         amountPaid: formData.amountPaid || null,
         accountNumber: formData.accountNumber || selectedCustomerData?.accountNumber || ''
       };
-      let lastOrderData = null;
+  
       const productIds = formData.productIds && formData.productIds.length
-      ? formData.productIds
-      : (formData.productId ? [formData.productId] : []);
-    
-    if (!productIds.length) {
-      showToast('Please select at least one product.');
-      return;
-    }
-    
-    const quantities = formData.productQuantities || {};
-    console.log('Quantities map:', quantities);
-    console.log('Product IDs:', productIds);
-    for (const pid of productIds) {
-        const qtyForPid = quantities[pid] || formData.quantity || 1;
-        console.log(`Product ${pid} quantity:`, qtyForPid);
-        const result = await apiCall('/orders', {
-          method: 'POST',
-          body: JSON.stringify({
-            ...basePayload,
-            productId: pid,
-            quantity: quantities[pid] || formData.quantity || 1
-          })
-        });
-        if (!result.ok) {
-          const errorMessage = result.error || 'Failed to create order. Please try again.';
-          showToast(errorMessage);
-          if (result.networkError) {
-            showToast('Cannot connect to backend. Please ensure Flask is running.');
-          }
-          return;
-        }
-      
-        lastOrderData = result.data;
+        ? formData.productIds
+        : (formData.productId ? [formData.productId] : []);
+  
+      if (!productIds.length) {
+        showToast('Please select at least one product.');
+        return;
       }
-
-        // Check for out-of-stock products
-        const outOfStock = productIds.filter(id => {
-          const product = inventory.find(p => p.id === id);
-          const requestedQty = formData.productQuantities?.[id] || 1;
-          return product && product.quantity < requestedQty;
-        });
-        if (outOfStock.length > 0) {
-          const names = outOfStock.map(id => inventory.find(p => p.id === id)?.name).join(', ');
-          showToast(`The following products are out of stock: ${names}`);
-          return;
-        }
-
-
-      console.log('productIds:', productIds);
-      console.log('quantities:', quantities);
-      console.log('basePayload:', basePayload);
-
-      //const quantities = formData.productQuantities || {};
+  
+      const quantities = formData.productQuantities || {};
       const productAmounts = formData.productAmounts || {};
+  
+      let lastOrderData = null;
+  
       for (const pid of productIds) {
         const qtyForPid = quantities[pid] || formData.quantity || 1;
         const pidAmount = productAmounts[pid] != null && productAmounts[pid] > 0
           ? productAmounts[pid]
           : formData.amountPaid || null;
+  
         const result = await apiCall('/orders', {
           method: 'POST',
           body: JSON.stringify({
@@ -995,21 +956,19 @@ const InventorySystem = ({ onLogout }) => {
             amountPaid: pidAmount
           })
         });
+  
         if (!result.ok) {
-          const errorMessage = result.error || 'Failed to create order. Please try again.';
-          showToast(errorMessage);
-          console.error('Error response:', result.data);
+          showToast(result.error || 'Failed to create order. Please try again.', 'error');
           if (result.networkError) {
-            showToast('Cannot connect to backend. Please ensure Flask is running.');
+            showToast('Cannot connect to backend. Please ensure Flask is running.', 'error');
           }
           return;
         }
-
+  
         lastOrderData = result.data;
       }
-
+  
       if (lastOrderData) {
-        // For flows that need pendingOrder (not used for immediate-confirm path)
         if (!formData.paymentConfirmed && formData.paymentMethod && !formData.paymentReference) {
           setPendingOrder(lastOrderData.order);
           setOrderStep('payment');
@@ -1018,13 +977,14 @@ const InventorySystem = ({ onLogout }) => {
           await fetchShipping();
           await fetchInventory();
           await fetchCustomers();
-          // If viewing a customer, refresh their order history so payment info appears
+  
           if (selectedCustomer) {
             const customerSpecificOrders = updatedOrders.filter(
               (o) => o.customerName === selectedCustomer
             );
             setCustomerOrders(customerSpecificOrders);
           }
+  
           setShowModal(false);
           setOrderStep('details');
           setPendingOrder(null);
@@ -1032,19 +992,20 @@ const InventorySystem = ({ onLogout }) => {
           setCustomerSearchQuery('');
           setSelectedCustomerData(null);
           setPaymentProofPreview(null);
+          setSelectedProductIds([]);
+          setProductAmountInputs({});
+  
           showToast(productIds.length > 1 ? 'Orders created successfully!' : 'Order created successfully!');
           addNotification('info', `New order created for ${formData.customerName}`);
         }
       }
     } catch (error) {
-  console.error('Error adding order:', error);
-  console.error('Error details:', error?.message, error?.stack);
-  showToast(`Error creating order: ${error?.message || 'Unknown error'}`);
+      console.error('Error adding order:', error);
+      showToast(`Error creating order: ${error?.message || 'Unknown error'}`, 'error');
     } finally {
       setLoading(false);
     }
   };
-
 
   const exportSalesReportPDF = () => {
     if (!salesReportData) return;
