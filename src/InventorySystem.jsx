@@ -102,6 +102,7 @@ const InventorySystem = ({ onLogout }) => {
   const [productSearchQuery, setProductSearchQuery] = useState('');
   const [selectedProductOrders, setSelectedProductOrders] = useState([]);
   const [productSearchResults, setProductSearchResults] = useState([]);
+  const [qtyType, setQtyType] = useState('pieces'); // 'pieces' | 'carton'
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [loadingInventorySalesReport, setLoadingInventorySalesReport] = useState(false);
   const [inventorySearchQuery, setInventorySearchQuery] = useState('');
