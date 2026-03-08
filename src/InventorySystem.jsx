@@ -5258,9 +5258,7 @@ const InventorySystem = ({ onLogout }) => {
             // Convert FormData to object
             const data = {
               productId: formData.get('productId'),
-              productName: formData.get('productName') === '__custom__' || !formData.get('productName')
-              ? formData.get('productNameCustom')
-              : formData.get('productName'),
+              productName: formData.get('productName') === '__custom__' || "",
               batchId: formData.get('batchId'),
               category: formData.get('category') || 'Uncategorized',
               description: formData.get('description') || '',
