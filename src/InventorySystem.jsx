@@ -1804,7 +1804,7 @@ const InventorySystem = ({ onLogout }) => {
               onClick={verifyInventory}
               className="px-4 py-2 border border-[#E3E8EF] rounded-lg hover:bg-[#F5F7FA] transition flex items-center gap-2 text-sm font-medium text-[#64748B] dark:text-gray-400"
             >
-           //   <showToastCircle size={16} />
+              <showToastCircle size={16} />
               {!isMobile && 'Verify Stock'}
             </button>
             <button
