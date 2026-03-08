@@ -125,6 +125,7 @@ const InventorySystem = ({ onLogout }) => {
   const [expandedBatchId, setExpandedBatchId] = useState(null);
   const [batchTransactions, setBatchTransactions] = useState([]);
   const [loadingBatchTransactions, setLoadingBatchTransactions] = useState(false);
+  const [qtyType, setQtyType] = useState('pieces'); // 'pieces' | 'carton'
   const [customerSearchQuery, setCustomerSearchQuery] = useState('');
   const [customerSearchResults, setCustomerSearchResults] = useState([]);
   const [savedCategories, setSavedCategories] = useState(() => {
@@ -5352,357 +5353,166 @@ const InventorySystem = ({ onLogout }) => {
           }}>
  
 {/* BLOCK A: BASIC PRODUCT INFORMATION */}
-<div className="space-y-4">
-  <div className="flex items-center gap-2 pb-2 border-b border-gray-200 dark:border-[#2A2A2A]">
-    <Package className="text-[#2FB7A1]" size={20} />
-    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Basic Product Information</h3>
-  </div>
-
-  {/* ── Step 1: Quick-fill from saved product templates ── */}
-  {savedProductTemplates.length > 0 ? (
-    <div>
-      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-        Select Saved Product
-        <span className={`ml-2 text-xs font-normal ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>
-          — auto-fills name, ID and category
-        </span>
-      </label>
-      <select
-        defaultValue=""
-        onChange={(e) => {
-          const val = e.target.value;
-          if (!val) return;
-          const tpl = savedProductTemplates.find(p => p.id === val);
-          if (!tpl) return;
-          const form = e.target.closest('form');
-          if (!form) return;
-          const nameInput = form.querySelector('[name="productName"]');
-          const idInput   = form.querySelector('[name="productId"]');
-          const catSelect = form.querySelector('[name="category"]');
-          if (nameInput) nameInput.value = tpl.name;
-          if (idInput)   idInput.value   = tpl.id;
-          if (catSelect) catSelect.value = tpl.category;
-        }}
-        className={`w-full px-4 py-3 border rounded-lg text-sm focus:ring-2 focus:ring-[#2FB7A1] focus:border-transparent transition ${
-          darkMode
-            ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white'
-            : 'bg-white border-gray-300 text-gray-900'
-        }`}
-      >
-        <option value="">— Choose a saved product (optional) —</option>
-        {savedProductTemplates.map(tpl => (
-          <option key={tpl.id} value={tpl.id}>
-            {tpl.name} · {tpl.id} · {tpl.category}
-          </option>
-        ))}
-      </select>
-    </div>
-  ) : (
-    <div className={`rounded-lg border border-dashed px-4 py-3 text-sm ${
-      darkMode ? 'border-[#2A2A2A] text-gray-500' : 'border-gray-200 text-[#94A3B8]'
-    }`}>
-      💡 Save product templates in <strong>Settings → Product Templates</strong> to auto-fill this form next time.
-    </div>
-  )}
-
-  {/* ── Product Name ── */}
-  <div>
-    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-      Product Name <span className="text-red-500">*</span>
-    </label>
-    <input
-      name="productName"
-      placeholder="e.g. Vitamin C 1000mg"
-      className={`w-full px-4 py-3 border rounded-lg transition-all ${
-        darkMode
-          ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white placeholder-gray-400 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
-          : 'bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
-      }`}
-      required
-    />
-  </div>
-
-  {/* ── Product ID + Category ── */}
-  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-    <div>
-      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-        Product ID <span className="text-red-500">*</span>
-      </label>
-      <input
-        name="productId"
-        placeholder="e.g. VITC-1000"
-        className={`w-full px-4 py-3 border rounded-lg transition-all font-mono ${
-          darkMode
-            ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white placeholder-gray-400 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
-            : 'bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
-        }`}
-        required
-      />
-    </div>
-
-    <div>
-      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-        Category
-      </label>
-      <select
-        name="category"
-        defaultValue=""
-        className={`w-full px-4 py-3 border rounded-lg text-sm focus:ring-2 focus:ring-[#2FB7A1] focus:border-transparent transition ${
-          darkMode
-            ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white'
-            : 'bg-white border-gray-300 text-gray-900'
-        }`}
-      >
-        <option value="">— Select category —</option>
-        {savedCategories.length > 0
-          ? savedCategories.map(cat => (
-              <option key={cat.id} value={cat.name}>
-                {cat.name} ({cat.id})
-              </option>
-            ))
-          : getUniqueCategories().map(cat => (
-              <option key={cat} value={cat}>{cat}</option>
-            ))
-        }
-        <option value="Uncategorized">Uncategorized</option>
-      </select>
-      {savedCategories.length === 0 && (
-        <p className={`mt-1 text-xs ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>
-          Add categories in Settings to populate this list.
-        </p>
-      )}
-    </div>
-  </div>
-
-  {/* ── Quantity + Supplier ── */}
-  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-  <div className="space-y-3">
+<div className="space-y-3">
   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
     Quantity Type <span className="text-red-500">*</span>
   </label>
 
-  {/* Toggle: Pieces vs Carton */}
+  {/* Toggle */}
   <div className={`inline-flex rounded-lg border overflow-hidden text-sm font-medium ${
     darkMode ? 'border-[#2A2A2A]' : 'border-gray-300'
   }`}>
     <button
       type="button"
-      onClick={(e) => {
-        const form = e.target.closest('form');
-        form.querySelector('#qty-type-pieces').dataset.active = 'true';
-        form.querySelector('#qty-type-carton').dataset.active = 'false';
-        form.querySelector('#qty-pieces-block').classList.remove('hidden');
-        form.querySelector('#qty-carton-block').classList.add('hidden');
-        // reset hidden quantity input
-        const piecesInput = form.querySelector('#qty-pieces-input');
-        const hiddenQty = form.querySelector('input[name="quantity"]');
-        if (hiddenQty) hiddenQty.value = piecesInput?.value || '';
-        e.target.dataset.active = 'true';
-        form.querySelector('#qty-carton-btn').dataset.active = 'false';
-        e.target.className = `px-4 py-2 transition bg-[#2FB7A1] text-white`;
-        form.querySelector('#qty-carton-btn').className = `px-4 py-2 transition ${darkMode ? 'bg-[#1A1A1A] text-gray-400' : 'bg-white text-gray-600'}`;
-      }}
-      id="qty-pieces-btn"
-      data-active="true"
-      className="px-4 py-2 transition bg-[#2FB7A1] text-white"
+      onClick={() => setQtyType('pieces')}
+      className={`px-5 py-2 transition-all ${
+        qtyType === 'pieces'
+          ? 'bg-[#2FB7A1] text-white'
+          : darkMode
+          ? 'bg-[#1A1A1A] text-gray-400 hover:text-white'
+          : 'bg-white text-gray-600 hover:bg-gray-50'
+      }`}
     >
-      Pieces
+      📦 Pieces
     </button>
     <button
       type="button"
-      onClick={(e) => {
-        const form = e.target.closest('form');
-        form.querySelector('#qty-pieces-block').classList.add('hidden');
-        form.querySelector('#qty-carton-block').classList.remove('hidden');
-        e.target.dataset.active = 'true';
-        form.querySelector('#qty-pieces-btn').dataset.active = 'false';
-        e.target.className = `px-4 py-2 transition bg-[#2FB7A1] text-white`;
-        form.querySelector('#qty-pieces-btn').className = `px-4 py-2 transition ${darkMode ? 'bg-[#1A1A1A] text-gray-400' : 'bg-white text-gray-600'}`;
-        // recalculate
-        const cartons = parseFloat(form.querySelector('#qty-cartons-input')?.value) || 0;
-        const perCarton = parseFloat(form.querySelector('#qty-per-carton-input')?.value) || 0;
-        const hiddenQty = form.querySelector('input[name="quantity"]');
-        if (hiddenQty) hiddenQty.value = cartons * perCarton || '';
-      }}
-      id="qty-carton-btn"
-      data-active="false"
-      className={`px-4 py-2 transition ${darkMode ? 'bg-[#1A1A1A] text-gray-400' : 'bg-white text-gray-600'}`}
+      onClick={() => setQtyType('carton')}
+      className={`px-5 py-2 transition-all border-l ${
+        darkMode ? 'border-[#2A2A2A]' : 'border-gray-300'
+      } ${
+        qtyType === 'carton'
+          ? 'bg-[#2FB7A1] text-white'
+          : darkMode
+          ? 'bg-[#1A1A1A] text-gray-400 hover:text-white'
+          : 'bg-white text-gray-600 hover:bg-gray-50'
+      }`}
     >
-      Cartons
+      🏷️ Cartons
     </button>
   </div>
 
-  {/* Hidden actual quantity field submitted with form */}
+  {/* Hidden quantity field — always submitted */}
   <input type="hidden" name="quantity" id="qty-hidden" />
 
-  {/* PIECES block */}
-  <div id="qty-pieces-block">
-    <label className={`block text-xs font-medium mb-1 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-      Number of Pieces
-    </label>
-    <input
-      id="qty-pieces-input"
-      type="number"
-      min="1"
-      placeholder="e.g. 120"
-      onInput={(e) => {
-        const form = e.target.closest('form');
-        const hidden = form.querySelector('input[name="quantity"]');
-        if (hidden) hidden.value = e.target.value;
-        // trigger profit recalc
-        form.dispatchEvent(new Event('input', { bubbles: true }));
-      }}
-      className={`w-full px-4 py-3 border rounded-lg transition-all text-sm ${
-        darkMode
-          ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white placeholder-gray-400 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
-          : 'bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
-      }`}
-    />
-  </div>
-
-  {/* CARTON block */}
-  <div id="qty-carton-block" className="hidden space-y-3">
-    <div className="grid grid-cols-2 gap-3">
-      <div>
-        <label className={`block text-xs font-medium mb-1 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-          Number of Cartons
-        </label>
-        <input
-          id="qty-cartons-input"
-          type="number"
-          min="1"
-          placeholder="e.g. 10"
-          onInput={(e) => {
-            const form = e.target.closest('form');
-            const cartons = parseFloat(e.target.value) || 0;
-            const perCarton = parseFloat(form.querySelector('#qty-per-carton-input')?.value) || 0;
-            const total = cartons * perCarton;
-            const hidden = form.querySelector('input[name="quantity"]');
-            const display = form.querySelector('#qty-total-display');
-            if (hidden) hidden.value = total || '';
-            if (display) display.textContent = total > 0 ? `= ${total.toLocaleString()} pieces total` : '';
-            form.dispatchEvent(new Event('input', { bubbles: true }));
-          }}
-          className={`w-full px-4 py-3 border rounded-lg transition-all text-sm ${
-            darkMode
-              ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white placeholder-gray-400 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
-              : 'bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
-          }`}
-        />
-      </div>
-      <div>
-        <label className={`block text-xs font-medium mb-1 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-          Pieces per Carton
-        </label>
-        <input
-          id="qty-per-carton-input"
-          type="number"
-          min="1"
-          placeholder="e.g. 12"
-          onInput={(e) => {
-            const form = e.target.closest('form');
-            const perCarton = parseFloat(e.target.value) || 0;
-            const cartons = parseFloat(form.querySelector('#qty-cartons-input')?.value) || 0;
-            const total = cartons * perCarton;
-            const hidden = form.querySelector('input[name="quantity"]');
-            const display = form.querySelector('#qty-total-display');
-            if (hidden) hidden.value = total || '';
-            if (display) display.textContent = total > 0 ? `= ${total.toLocaleString()} pieces total` : '';
-            form.dispatchEvent(new Event('input', { bubbles: true }));
-          }}
-          className={`w-full px-4 py-3 border rounded-lg transition-all text-sm ${
-            darkMode
-              ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white placeholder-gray-400 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
-              : 'bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
-          }`}
-        />
-      </div>
-    </div>
-
-    {/* Live total preview */}
-    <div className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border ${
-      darkMode ? 'bg-[#0d1117] border-[#1f2937]' : 'bg-[#F0FDF4] border-[#A7F3D0]'
-    }`}>
-      <span className="text-[#2FB7A1] font-bold text-lg">📦</span>
-      <span
-        id="qty-total-display"
-        className={`text-sm font-semibold ${darkMode ? 'text-[#2FB7A1]' : 'text-[#16A34A]'}`}
-      >
-        Enter cartons and pieces per carton above
-      </span>
-    </div>
-  </div>
-</div>
-
+  {/* PIECES mode */}
+  {qtyType === 'pieces' && (
     <div>
-      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-        Supplier
+      <label className={`block text-xs font-medium mb-1.5 ${
+        darkMode ? 'text-gray-400' : 'text-gray-600'
+      }`}>
+        Number of Pieces <span className="text-red-500">*</span>
       </label>
       <input
-        name="supplier"
-        placeholder="Enter supplier name (optional)"
-        className={`w-full px-4 py-3 border rounded-lg transition-all ${
+        id="qty-pieces-input"
+        type="number"
+        min="1"
+        placeholder="e.g. 120"
+        onInput={(e) => {
+          const form = e.target.closest('form');
+          const hidden = form?.querySelector('#qty-hidden');
+          if (hidden) hidden.value = e.target.value;
+          form?.dispatchEvent(new Event('input', { bubbles: true }));
+        }}
+        className={`w-full px-4 py-3 border rounded-lg transition-all text-sm ${
           darkMode
             ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white placeholder-gray-400 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
             : 'bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
         }`}
       />
     </div>
-  </div>
+  )}
 
-  {/* ── Date Added + Batch ID ── */}
-  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-    <div>
-      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-        Date Added <span className="text-red-500">*</span>
-      </label>
-      <input
-        name="dateReceived"
-        type="date"
-        className={`w-full px-4 py-3 border rounded-lg transition-all ${
-          darkMode
-            ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
-            : 'bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
-        }`}
-        required
-      />
-    </div>
+  {/* CARTON mode */}
+  {qtyType === 'carton' && (
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className={`block text-xs font-medium mb-1.5 ${
+            darkMode ? 'text-gray-400' : 'text-gray-600'
+          }`}>
+            Number of Cartons <span className="text-red-500">*</span>
+          </label>
+          <input
+            id="qty-cartons-input"
+            type="number"
+            min="1"
+            placeholder="e.g. 10"
+            onInput={(e) => {
+              const form = e.target.closest('form');
+              const cartons = parseFloat(e.target.value) || 0;
+              const perCarton = parseFloat(
+                form?.querySelector('#qty-per-carton-input')?.value
+              ) || 0;
+              const total = cartons * perCarton;
+              const hidden = form?.querySelector('#qty-hidden');
+              const display = form?.querySelector('#qty-total-display');
+              if (hidden) hidden.value = total > 0 ? total : '';
+              if (display) display.textContent = total > 0
+                ? `= ${total.toLocaleString()} pieces total`
+                : 'Enter both values to calculate';
+              form?.dispatchEvent(new Event('input', { bubbles: true }));
+            }}
+            className={`w-full px-4 py-3 border rounded-lg transition-all text-sm ${
+              darkMode
+                ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white placeholder-gray-400 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
+                : 'bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
+            }`}
+          />
+        </div>
+        <div>
+          <label className={`block text-xs font-medium mb-1.5 ${
+            darkMode ? 'text-gray-400' : 'text-gray-600'
+          }`}>
+            Pieces per Carton <span className="text-red-500">*</span>
+          </label>
+          <input
+            id="qty-per-carton-input"
+            type="number"
+            min="1"
+            placeholder="e.g. 12"
+            onInput={(e) => {
+              const form = e.target.closest('form');
+              const perCarton = parseFloat(e.target.value) || 0;
+              const cartons = parseFloat(
+                form?.querySelector('#qty-cartons-input')?.value
+              ) || 0;
+              const total = cartons * perCarton;
+              const hidden = form?.querySelector('#qty-hidden');
+              const display = form?.querySelector('#qty-total-display');
+              if (hidden) hidden.value = total > 0 ? total : '';
+              if (display) display.textContent = total > 0
+                ? `= ${total.toLocaleString()} pieces total`
+                : 'Enter both values to calculate';
+              form?.dispatchEvent(new Event('input', { bubbles: true }));
+            }}
+            className={`w-full px-4 py-3 border rounded-lg transition-all text-sm ${
+              darkMode
+                ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white placeholder-gray-400 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
+                : 'bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
+            }`}
+          />
+        </div>
+      </div>
 
-    <div>
-      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-        Batch ID <span className="text-red-500">*</span>
-      </label>
-      <input
-        name="batchId"
-        placeholder="e.g., BATCH-001"
-        className={`w-full px-4 py-3 border rounded-lg transition-all ${
-          darkMode
-            ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white placeholder-gray-400 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
-            : 'bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
-        }`}
-        required
-      />
-      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-        Unique identifier for this stock batch
-      </p>
-    </div>
-  </div>
-
-  {/* ── Description ── */}
-  <div>
-    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-      Description (Optional)
-    </label>
-    <input
-      name="description"
-      placeholder="Product description"
-      className={`w-full px-4 py-3 border rounded-lg transition-all ${
+      {/* Live total pill */}
+      <div className={`flex items-center gap-2.5 px-4 py-2.5 rounded-lg border ${
         darkMode
-          ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white placeholder-gray-400 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
-          : 'bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
-      }`}
-    />
-  </div>
+          ? 'bg-[#0d1117] border-[#1f2937]'
+          : 'bg-[#F0FDF4] border-[#A7F3D0]'
+      }`}>
+        <span className="text-lg">📦</span>
+        <span
+          id="qty-total-display"
+          className={`text-sm font-semibold ${
+            darkMode ? 'text-[#2FB7A1]' : 'text-[#16A34A]'
+          }`}
+        >
+          Enter both values to calculate
+        </span>
+      </div>
+    </div>
+  )}
 </div>
               
 
