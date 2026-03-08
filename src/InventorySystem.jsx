@@ -5858,12 +5858,13 @@ const InventorySystem = ({ onLogout }) => {
                           step="0.01"
                           min="0"
                           placeholder="0.00"
+                          tabIndex={-1}
                           className={`w-full pl-8 pr-4 py-3 border rounded-lg transition-all ${
                             darkMode
                               ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white placeholder-gray-400 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
                               : 'bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
                           }`}
-                          required
+                          
                         />
                       </div>
                     </div>
@@ -5950,7 +5951,7 @@ const InventorySystem = ({ onLogout }) => {
                               ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white placeholder-gray-400 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
                               : 'bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
                           }`}
-                          required
+                        
                         />
                       </div>
                     </div>
@@ -5976,7 +5977,7 @@ const InventorySystem = ({ onLogout }) => {
                               ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white placeholder-gray-400 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
                               : 'bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
                           }`}
-                          required
+                         
                         />
                       </div>
                     </div>
@@ -6063,7 +6064,7 @@ const InventorySystem = ({ onLogout }) => {
                               ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white placeholder-gray-400 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
                               : 'bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
                           }`}
-                          required
+                         
                         />
                       </div>
                     </div>
