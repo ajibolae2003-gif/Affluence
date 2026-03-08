@@ -1822,7 +1822,7 @@ const InventorySystem = ({ onLogout }) => {
               onClick={verifyInventory}
               className="px-4 py-2 border border-[#E3E8EF] rounded-lg hover:bg-[#F5F7FA] transition flex items-center gap-2 text-sm font-medium text-[#64748B] dark:text-gray-400"
             >
-              <showToastCircle size={16} />
+              <Eye size={16} />
               {!isMobile && 'Verify Stock'}
             </button>
             <button
@@ -5259,7 +5259,7 @@ const InventorySystem = ({ onLogout }) => {
             // Convert FormData to object
             const data = {
               productId: formData.get('productId'),
-              productName: formData.get('productName') === '__custom__' || "",
+              productName: formData.get('productName'),
               batchId: formData.get('batchId'),
               category: formData.get('category') || 'Uncategorized',
               description: formData.get('description') || '',
@@ -6956,8 +6956,7 @@ const InventorySystem = ({ onLogout }) => {
                               if (file) {
                                 const reader = new FileReader();
                                 reader.onloadend = () => {
-                                  setImagePreview(reader.result);
-                                  imageBase64 = reader.result;
+                                  setPaymentProofPreview(reader.result);
                                 };
                                 reader.readAsDataURL(file);
                               }
