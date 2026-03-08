@@ -6887,7 +6887,7 @@ const InventorySystem = ({ onLogout }) => {
           title="Edit Product Pricing"
           darkMode={darkMode}
         >
-          <form
+<form
             onSubmit={(e) => {
               e.preventDefault();
               const formData = new FormData(e.target);
@@ -6899,6 +6899,18 @@ const InventorySystem = ({ onLogout }) => {
               };
               handleUpdateProduct(productToEdit.id, updates);
             }}
+            onInput={(e) => {
+              const form = e.currentTarget;
+              const costVal = parseFloat(form.querySelector('#edit-cost-input')?.value) || 0;
+              const shippingVal = parseFloat(form.querySelector('#edit-shipping-input')?.value) || 0;
+              const priceVal = parseFloat(form.querySelector('[name="price"]')?.value) || 0;
+              const margin = priceVal - costVal;
+              const marginPct = priceVal > 0 ? ((margin / priceVal) * 100).toFixed(1) : '0.0';
+              const totalCostEl = form.querySelector('#edit-total-cost-preview');
+              const marginEl = form.querySelector('#edit-margin-preview');
+              if (totalCostEl) totalCostEl.textContent = `₦${(costVal + shippingVal).toFixed(2)}`;
+              if (marginEl) marginEl.textContent = `₦${margin.toFixed(2)} (${marginPct}%)`;
+            }}
           >
             <div className="space-y-4">
               <div className="bg-[#F5F7FA] rounded-lg p-4 mb-4">
@@ -6908,6 +6920,8 @@ const InventorySystem = ({ onLogout }) => {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
                   <label className="block text-sm font-medium text-[#64748B] mb-2">
                     Cost per Unit (₦)
                   </label>
@@ -6915,6 +6929,7 @@ const InventorySystem = ({ onLogout }) => {
                     <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">₦</span>
                     <input
                       name="cost"
+                      id="edit-cost-input"
                       type="number"
                       step="0.01"
                       min="0"
@@ -6945,12 +6960,13 @@ const InventorySystem = ({ onLogout }) => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-[#64748B] mb-2">
-                    Shipping Cost (₦)
+                    Delivery Cost (₦)
                   </label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">₦</span>
                     <input
                       name="shippingCost"
+                      id="edit-shipping-input"
                       type="number"
                       step="0.01"
                       min="0"
@@ -6971,6 +6987,35 @@ const InventorySystem = ({ onLogout }) => {
                   />
                 </div>
               </div>
+              {/* Live cost-per-unit preview when editing */}
+              <div className={`rounded-lg border p-4 ${darkMode ? 'bg-[#0d1117] border-[#1f2937]' : 'bg-[#F8FAFC] border-[#E3E8EF]'}`}>
+                <p className={`text-xs font-semibold uppercase tracking-wide mb-3 ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>
+                  Live Preview
+                </p>
+                <div className="grid grid-cols-3 gap-4 text-sm">
+                
+
+                </div>
+
+                  <div>
+                    <p className={`text-xs mb-1 ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>Total Cost</p>
+                    <p id="edit-total-cost-preview" className={`font-semibold ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>
+                      ₦{((productToEdit.cost || 0) + (productToEdit.shippingCost || 0)).toFixed(2)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className={`text-xs mb-1 ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>Margin</p>
+                    <p id="edit-margin-preview" className={`font-semibold ${((productToEdit.price || 0) - (productToEdit.cost || 0)) >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                      ₦{((productToEdit.price || 0) - (productToEdit.cost || 0)).toFixed(2)} ({productToEdit.price > 0 ? ((((productToEdit.price || 0) - (productToEdit.cost || 0)) / productToEdit.price) * 100).toFixed(1) : '0.0'}%)
+                    </p>
+                  </div>
+                  <div>
+                    <p className={`text-xs mb-1 ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>Selling Price</p>
+                    <p className="font-semibold text-[#2FB7A1]">₦{(productToEdit.price || 0).toFixed(2)}</p>
+                  </div>
+                </div>
+              </div>
+              </div>
               <button
                 type="submit"
                 disabled={loading}
@@ -6982,7 +7027,7 @@ const InventorySystem = ({ onLogout }) => {
           </form>
         </Modal>
       )}
-
+      
       {showVerification && verificationData && (
         <Modal onClose={() => { setShowVerification(false); setVerificationData(null); }} title="Inventory Verification" size="xl" darkMode={darkMode}>
           <div className="space-y-6">
