@@ -5288,11 +5288,13 @@ const InventorySystem = ({ onLogout }) => {
               showToast('Please select a complete date (DD · MMM · YY).');
               return;
             }
-            const qty = parseFloat(data.quantity);
-            if (!data.quantity || Number.isNaN(qty) || qty <= 0) {
+            const hiddenQtyEl = e.target.querySelector('input[name="quantity"]');
+            const qty = parseFloat(hiddenQtyEl?.value);
+            if (!hiddenQtyEl?.value || Number.isNaN(qty) || qty <= 0) {
               showToast('Please enter a valid quantity greater than 0.');
               return;
             }
+            data.quantity = hiddenQtyEl.value;
             const totalAmountPaid = parseFloat(formData.get('totalAmountPaid'));
             if (Number.isNaN(totalAmountPaid) || totalAmountPaid < 0) {
               showToast('Please enter a valid total amount paid.');
@@ -5474,23 +5476,163 @@ const InventorySystem = ({ onLogout }) => {
 
   {/* ── Quantity + Supplier ── */}
   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-    <div>
-      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-        Quantity <span className="text-red-500">*</span>
-      </label>
-      <input
-        name="quantity"
-        type="number"
-        min="1"
-        placeholder="Enter quantity"
-        className={`w-full px-4 py-3 border rounded-lg transition-all ${
-          darkMode
-            ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white placeholder-gray-400 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
-            : 'bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
-        }`}
-        required
-      />
+  <div className="space-y-3">
+  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+    Quantity Type <span className="text-red-500">*</span>
+  </label>
+
+  {/* Toggle: Pieces vs Carton */}
+  <div className={`inline-flex rounded-lg border overflow-hidden text-sm font-medium ${
+    darkMode ? 'border-[#2A2A2A]' : 'border-gray-300'
+  }`}>
+    <button
+      type="button"
+      onClick={(e) => {
+        const form = e.target.closest('form');
+        form.querySelector('#qty-type-pieces').dataset.active = 'true';
+        form.querySelector('#qty-type-carton').dataset.active = 'false';
+        form.querySelector('#qty-pieces-block').classList.remove('hidden');
+        form.querySelector('#qty-carton-block').classList.add('hidden');
+        // reset hidden quantity input
+        const piecesInput = form.querySelector('#qty-pieces-input');
+        const hiddenQty = form.querySelector('input[name="quantity"]');
+        if (hiddenQty) hiddenQty.value = piecesInput?.value || '';
+        e.target.dataset.active = 'true';
+        form.querySelector('#qty-carton-btn').dataset.active = 'false';
+        e.target.className = `px-4 py-2 transition bg-[#2FB7A1] text-white`;
+        form.querySelector('#qty-carton-btn').className = `px-4 py-2 transition ${darkMode ? 'bg-[#1A1A1A] text-gray-400' : 'bg-white text-gray-600'}`;
+      }}
+      id="qty-pieces-btn"
+      data-active="true"
+      className="px-4 py-2 transition bg-[#2FB7A1] text-white"
+    >
+      Pieces
+    </button>
+    <button
+      type="button"
+      onClick={(e) => {
+        const form = e.target.closest('form');
+        form.querySelector('#qty-pieces-block').classList.add('hidden');
+        form.querySelector('#qty-carton-block').classList.remove('hidden');
+        e.target.dataset.active = 'true';
+        form.querySelector('#qty-pieces-btn').dataset.active = 'false';
+        e.target.className = `px-4 py-2 transition bg-[#2FB7A1] text-white`;
+        form.querySelector('#qty-pieces-btn').className = `px-4 py-2 transition ${darkMode ? 'bg-[#1A1A1A] text-gray-400' : 'bg-white text-gray-600'}`;
+        // recalculate
+        const cartons = parseFloat(form.querySelector('#qty-cartons-input')?.value) || 0;
+        const perCarton = parseFloat(form.querySelector('#qty-per-carton-input')?.value) || 0;
+        const hiddenQty = form.querySelector('input[name="quantity"]');
+        if (hiddenQty) hiddenQty.value = cartons * perCarton || '';
+      }}
+      id="qty-carton-btn"
+      data-active="false"
+      className={`px-4 py-2 transition ${darkMode ? 'bg-[#1A1A1A] text-gray-400' : 'bg-white text-gray-600'}`}
+    >
+      Cartons
+    </button>
+  </div>
+
+  {/* Hidden actual quantity field submitted with form */}
+  <input type="hidden" name="quantity" id="qty-hidden" />
+
+  {/* PIECES block */}
+  <div id="qty-pieces-block">
+    <label className={`block text-xs font-medium mb-1 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+      Number of Pieces
+    </label>
+    <input
+      id="qty-pieces-input"
+      type="number"
+      min="1"
+      placeholder="e.g. 120"
+      onInput={(e) => {
+        const form = e.target.closest('form');
+        const hidden = form.querySelector('input[name="quantity"]');
+        if (hidden) hidden.value = e.target.value;
+        // trigger profit recalc
+        form.dispatchEvent(new Event('input', { bubbles: true }));
+      }}
+      className={`w-full px-4 py-3 border rounded-lg transition-all text-sm ${
+        darkMode
+          ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white placeholder-gray-400 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
+          : 'bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
+      }`}
+    />
+  </div>
+
+  {/* CARTON block */}
+  <div id="qty-carton-block" className="hidden space-y-3">
+    <div className="grid grid-cols-2 gap-3">
+      <div>
+        <label className={`block text-xs font-medium mb-1 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+          Number of Cartons
+        </label>
+        <input
+          id="qty-cartons-input"
+          type="number"
+          min="1"
+          placeholder="e.g. 10"
+          onInput={(e) => {
+            const form = e.target.closest('form');
+            const cartons = parseFloat(e.target.value) || 0;
+            const perCarton = parseFloat(form.querySelector('#qty-per-carton-input')?.value) || 0;
+            const total = cartons * perCarton;
+            const hidden = form.querySelector('input[name="quantity"]');
+            const display = form.querySelector('#qty-total-display');
+            if (hidden) hidden.value = total || '';
+            if (display) display.textContent = total > 0 ? `= ${total.toLocaleString()} pieces total` : '';
+            form.dispatchEvent(new Event('input', { bubbles: true }));
+          }}
+          className={`w-full px-4 py-3 border rounded-lg transition-all text-sm ${
+            darkMode
+              ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white placeholder-gray-400 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
+              : 'bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
+          }`}
+        />
+      </div>
+      <div>
+        <label className={`block text-xs font-medium mb-1 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+          Pieces per Carton
+        </label>
+        <input
+          id="qty-per-carton-input"
+          type="number"
+          min="1"
+          placeholder="e.g. 12"
+          onInput={(e) => {
+            const form = e.target.closest('form');
+            const perCarton = parseFloat(e.target.value) || 0;
+            const cartons = parseFloat(form.querySelector('#qty-cartons-input')?.value) || 0;
+            const total = cartons * perCarton;
+            const hidden = form.querySelector('input[name="quantity"]');
+            const display = form.querySelector('#qty-total-display');
+            if (hidden) hidden.value = total || '';
+            if (display) display.textContent = total > 0 ? `= ${total.toLocaleString()} pieces total` : '';
+            form.dispatchEvent(new Event('input', { bubbles: true }));
+          }}
+          className={`w-full px-4 py-3 border rounded-lg transition-all text-sm ${
+            darkMode
+              ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white placeholder-gray-400 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
+              : 'bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
+          }`}
+        />
+      </div>
     </div>
+
+    {/* Live total preview */}
+    <div className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border ${
+      darkMode ? 'bg-[#0d1117] border-[#1f2937]' : 'bg-[#F0FDF4] border-[#A7F3D0]'
+    }`}>
+      <span className="text-[#2FB7A1] font-bold text-lg">📦</span>
+      <span
+        id="qty-total-display"
+        className={`text-sm font-semibold ${darkMode ? 'text-[#2FB7A1]' : 'text-[#16A34A]'}`}
+      >
+        Enter cartons and pieces per carton above
+      </span>
+    </div>
+  </div>
+</div>
 
     <div>
       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
