@@ -125,7 +125,6 @@ const InventorySystem = ({ onLogout }) => {
   const [expandedBatchId, setExpandedBatchId] = useState(null);
   const [batchTransactions, setBatchTransactions] = useState([]);
   const [loadingBatchTransactions, setLoadingBatchTransactions] = useState(false);
-  const [qtyType, setQtyType] = useState('pieces'); // 'pieces' | 'carton'
   const [customerSearchQuery, setCustomerSearchQuery] = useState('');
   const [customerSearchResults, setCustomerSearchResults] = useState([]);
   const [savedCategories, setSavedCategories] = useState(() => {
