@@ -127,6 +127,17 @@ const InventorySystem = ({ onLogout }) => {
   const [loadingBatchTransactions, setLoadingBatchTransactions] = useState(false);
   const [customerSearchQuery, setCustomerSearchQuery] = useState('');
   const [customerSearchResults, setCustomerSearchResults] = useState([]);
+  const [savedCategories, setSavedCategories] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('savedCategories') || '[]'); } catch { return []; }
+  });
+  const [savedProductTemplates, setSavedProductTemplates] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('savedProductTemplates') || '[]'); } catch { return []; }
+  });
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [newCategoryId, setNewCategoryId] = useState('');
+  const [newProductTemplateName, setNewProductTemplateName] = useState('');
+  const [newProductTemplateId, setNewProductTemplateId] = useState('');
+  const [newProductTemplateCategory, setNewProductTemplateCategory] = useState('');
   const [selectedCustomerData, setSelectedCustomerData] = useState(null);
   const [orderStep, setOrderStep] = useState('details'); // 'details' or 'payment'
   const [pendingOrder, setPendingOrder] = useState(null);
@@ -194,7 +205,13 @@ const InventorySystem = ({ onLogout }) => {
     setConfirmDialog({ message, onConfirm });
   };
 
-
+  useEffect(() => {
+    localStorage.setItem('savedCategories', JSON.stringify(savedCategories));
+  }, [savedCategories]);
+  
+  useEffect(() => {
+    localStorage.setItem('savedProductTemplates', JSON.stringify(savedProductTemplates));
+  }, [savedProductTemplates]);
   const handleImageUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -3506,240 +3523,353 @@ const InventorySystem = ({ onLogout }) => {
 )}
 
 {activeTab === 'settings' && userRole === 'admin' && (
-  <div>
-    <h2 className={`text-2xl font-bold mb-6 ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>
+  <div className="space-y-6">
+    <h2 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>
       Admin Settings
     </h2>
 
-    {/* Automated Email Reports Card */}
-    <div className={`rounded-xl border p-6 mb-6 shadow-sm ${
-      darkMode ? 'bg-[#111827] border-[#1f2937]' : 'bg-white border-[#E3E8EF]'
-    }`}>
+    {/* ── Category Management ── */}
+    <div className={`rounded-xl border p-6 shadow-sm ${darkMode ? 'bg-[#111827] border-[#1f2937]' : 'bg-white border-[#E3E8EF]'}`}>
+      <div className="flex items-center gap-3 mb-5 pb-4 border-b border-[#E3E8EF] dark:border-[#1f2937]">
+        <div className="w-9 h-9 rounded-lg bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center">
+          <svg width="18" height="18" fill="none" stroke="#9333ea" strokeWidth="2" viewBox="0 0 24 24">
+            <rect x="2" y="3" width="7" height="7" rx="1"/><rect x="15" y="3" width="7" height="7" rx="1"/>
+            <rect x="2" y="14" width="7" height="7" rx="1"/><rect x="15" y="14" width="7" height="7" rx="1"/>
+          </svg>
+        </div>
+        <div>
+          <h3 className={`font-semibold ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>Category Management</h3>
+          <p className={`text-xs mt-0.5 ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>
+            Define product categories and their IDs
+          </p>
+        </div>
+      </div>
+
+      {/* Add Category Form */}
+      <div className="flex flex-col sm:flex-row gap-3 mb-5">
+        <div className="flex-1">
+          <label className={`block text-xs font-semibold uppercase tracking-wide mb-1.5 ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>
+            Category Name
+          </label>
+          <input
+            type="text"
+            value={newCategoryName}
+            onChange={e => setNewCategoryName(e.target.value)}
+            placeholder="e.g. Supplements, Skincare..."
+            className={`w-full px-4 py-2.5 border rounded-lg text-sm focus:ring-2 focus:ring-[#2FB7A1] focus:border-transparent ${
+              darkMode ? 'bg-[#0d1117] border-[#1f2937] text-white placeholder-gray-500' : 'bg-white border-[#E3E8EF] text-[#0F172A]'
+            }`}
+          />
+        </div>
+        <div className="flex-1">
+          <label className={`block text-xs font-semibold uppercase tracking-wide mb-1.5 ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>
+            Category ID
+          </label>
+          <input
+            type="text"
+            value={newCategoryId}
+            onChange={e => setNewCategoryId(e.target.value.toUpperCase())}
+            placeholder="e.g. SUPP, SKIN..."
+            className={`w-full px-4 py-2.5 border rounded-lg text-sm focus:ring-2 focus:ring-[#2FB7A1] focus:border-transparent font-mono ${
+              darkMode ? 'bg-[#0d1117] border-[#1f2937] text-white placeholder-gray-500' : 'bg-white border-[#E3E8EF] text-[#0F172A]'
+            }`}
+          />
+        </div>
+        <div className="flex items-end">
+          <button
+            onClick={() => {
+              if (!newCategoryName.trim() || !newCategoryId.trim()) {
+                showToast('Please fill in both category name and ID.', 'error'); return;
+              }
+              if (savedCategories.find(c => c.id === newCategoryId)) {
+                showToast('Category ID already exists.', 'error'); return;
+              }
+              setSavedCategories(prev => [...prev, { name: newCategoryName.trim(), id: newCategoryId.trim() }]);
+              setNewCategoryName(''); setNewCategoryId('');
+              showToast('Category added!');
+            }}
+            className="w-full sm:w-auto px-5 py-2.5 bg-[#2FB7A1] text-white rounded-lg text-sm font-semibold hover:bg-[#28a085] transition shadow-sm whitespace-nowrap"
+          >
+            + Add Category
+          </button>
+        </div>
+      </div>
+
+      {/* Category List */}
+      {savedCategories.length === 0 ? (
+        <p className={`text-sm text-center py-6 ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>No categories yet. Add one above.</p>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+          {savedCategories.map(cat => (
+            <div key={cat.id} className={`flex items-center justify-between px-4 py-3 rounded-lg border ${
+              darkMode ? 'bg-[#0d1117] border-[#1f2937]' : 'bg-[#F8FAFC] border-[#E3E8EF]'
+            }`}>
+              <div>
+                <p className={`text-sm font-semibold ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>{cat.name}</p>
+                <p className={`text-xs font-mono mt-0.5 ${darkMode ? 'text-[#2FB7A1]' : 'text-[#2FB7A1]'}`}>{cat.id}</p>
+              </div>
+              <button
+                onClick={() => {
+                  setSavedCategories(prev => prev.filter(c => c.id !== cat.id));
+                  showToast('Category removed.');
+                }}
+                className="text-red-400 hover:text-red-600 transition p-1"
+              >
+                <X size={15} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+
+    {/* ── Product Template Management ── */}
+    <div className={`rounded-xl border p-6 shadow-sm ${darkMode ? 'bg-[#111827] border-[#1f2937]' : 'bg-white border-[#E3E8EF]'}`}>
+      <div className="flex items-center gap-3 mb-5 pb-4 border-b border-[#E3E8EF] dark:border-[#1f2937]">
+        <div className="w-9 h-9 rounded-lg bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
+          <Package size={18} className="text-blue-600 dark:text-blue-400" />
+        </div>
+        <div>
+          <h3 className={`font-semibold ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>Product Templates</h3>
+          <p className={`text-xs mt-0.5 ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>
+            Pre-define products so they auto-fill when adding inventory
+          </p>
+        </div>
+      </div>
+
+      {/* Add Product Template Form */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
+        <div>
+          <label className={`block text-xs font-semibold uppercase tracking-wide mb-1.5 ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>
+            Product Name
+          </label>
+          <input
+            type="text"
+            value={newProductTemplateName}
+            onChange={e => setNewProductTemplateName(e.target.value)}
+            placeholder="e.g. Vitamin C 1000mg"
+            className={`w-full px-4 py-2.5 border rounded-lg text-sm focus:ring-2 focus:ring-[#2FB7A1] focus:border-transparent ${
+              darkMode ? 'bg-[#0d1117] border-[#1f2937] text-white placeholder-gray-500' : 'bg-white border-[#E3E8EF] text-[#0F172A]'
+            }`}
+          />
+        </div>
+        <div>
+          <label className={`block text-xs font-semibold uppercase tracking-wide mb-1.5 ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>
+            Product ID
+          </label>
+          <input
+            type="text"
+            value={newProductTemplateId}
+            onChange={e => setNewProductTemplateId(e.target.value.toUpperCase())}
+            placeholder="e.g. VITC-1000"
+            className={`w-full px-4 py-2.5 border rounded-lg text-sm focus:ring-2 focus:ring-[#2FB7A1] focus:border-transparent font-mono ${
+              darkMode ? 'bg-[#0d1117] border-[#1f2937] text-white placeholder-gray-500' : 'bg-white border-[#E3E8EF] text-[#0F172A]'
+            }`}
+          />
+        </div>
+        <div>
+          <label className={`block text-xs font-semibold uppercase tracking-wide mb-1.5 ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>
+            Category
+          </label>
+          <select
+            value={newProductTemplateCategory}
+            onChange={e => setNewProductTemplateCategory(e.target.value)}
+            className={`w-full px-4 py-2.5 border rounded-lg text-sm focus:ring-2 focus:ring-[#2FB7A1] focus:border-transparent ${
+              darkMode ? 'bg-[#0d1117] border-[#1f2937] text-white' : 'bg-white border-[#E3E8EF] text-[#0F172A]'
+            }`}
+          >
+            <option value="">Select category...</option>
+            {savedCategories.map(cat => (
+              <option key={cat.id} value={cat.name}>{cat.name} ({cat.id})</option>
+            ))}
+          </select>
+        </div>
+      </div>
+      <button
+        onClick={() => {
+          if (!newProductTemplateName.trim() || !newProductTemplateId.trim() || !newProductTemplateCategory) {
+            showToast('Please fill in all product fields.', 'error'); return;
+          }
+          if (savedProductTemplates.find(p => p.id === newProductTemplateId)) {
+            showToast('Product ID already exists.', 'error'); return;
+          }
+          setSavedProductTemplates(prev => [...prev, {
+            name: newProductTemplateName.trim(),
+            id: newProductTemplateId.trim(),
+            category: newProductTemplateCategory
+          }]);
+          setNewProductTemplateName(''); setNewProductTemplateId(''); setNewProductTemplateCategory('');
+          showToast('Product template added!');
+        }}
+        className="mb-5 px-5 py-2.5 bg-[#2FB7A1] text-white rounded-lg text-sm font-semibold hover:bg-[#28a085] transition shadow-sm"
+      >
+        + Add Product Template
+      </button>
+
+      {/* Product Template List */}
+      {savedProductTemplates.length === 0 ? (
+        <p className={`text-sm text-center py-6 ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>No product templates yet.</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className={`border-b ${darkMode ? 'border-[#1f2937]' : 'border-[#E3E8EF]'}`}>
+                {['Product Name', 'Product ID', 'Category', ''].map((h, i) => (
+                  <th key={i} className={`text-left px-3 py-2 text-xs font-bold uppercase tracking-wide ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {savedProductTemplates.map(pt => (
+                <tr key={pt.id} className={`border-b ${darkMode ? 'border-[#0d1117] hover:bg-[#0d1117]' : 'border-[#F8FAFC] hover:bg-[#F8FAFC]'}`}>
+                  <td className={`px-3 py-3 font-medium ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>{pt.name}</td>
+                  <td className={`px-3 py-3 font-mono text-xs text-[#2FB7A1]`}>{pt.id}</td>
+                  <td className={`px-3 py-3 ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>{pt.category}</td>
+                  <td className="px-3 py-3 text-right">
+                    <button
+                      onClick={() => { setSavedProductTemplates(prev => prev.filter(p => p.id !== pt.id)); showToast('Template removed.'); }}
+                      className="text-red-400 hover:text-red-600 transition"
+                    >
+                      <X size={15} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+
+    {/* ── Automated Email Reports Card ── */}
+    <div className={`rounded-xl border p-6 shadow-sm ${darkMode ? 'bg-[#111827] border-[#1f2937]' : 'bg-white border-[#E3E8EF]'}`}>
       <div className="flex items-center gap-3 mb-5 pb-4 border-b border-[#E3E8EF] dark:border-[#1f2937]">
         <div className="w-9 h-9 rounded-lg bg-[#2FB7A1]/10 flex items-center justify-center">
           <Bell size={18} className="text-[#2FB7A1]" />
         </div>
         <div>
-          <h3 className={`font-semibold ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>
-            Automated Email Reports
-          </h3>
-          <p className={`text-xs mt-0.5 ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>
-            Configure automatic PDF report delivery
-          </p>
+          <h3 className={`font-semibold ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>Automated Email Reports</h3>
+          <p className={`text-xs mt-0.5 ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>Configure automatic PDF report delivery</p>
         </div>
       </div>
-
       <form onSubmit={async (e) => {
         e.preventDefault();
-        setLoadingSettings(true);
-        setSettingsSaved(false);
-        const result = await apiCall('/settings/report', {
-          method: 'POST',
-          body: JSON.stringify(reportSettings),
-        });
+        setLoadingSettings(true); setSettingsSaved(false);
+        const result = await apiCall('/settings/report', { method: 'POST', body: JSON.stringify(reportSettings) });
         setLoadingSettings(false);
-        if (result.ok) {
-          setSettingsSaved(true);
-          setTimeout(() => setSettingsSaved(false), 3000);
-        } else {
-          showToast(result.error || 'Failed to save settings.');
-        }
+        if (result.ok) { setSettingsSaved(true); setTimeout(() => setSettingsSaved(false), 3000); }
+        else showToast(result.error || 'Failed to save settings.');
       }}>
         <div className="space-y-5">
-
-          {/* Email Input */}
           <div>
-            <label className={`block text-sm font-medium mb-1.5 ${
-              darkMode ? 'text-gray-300' : 'text-[#374151]'
-            }`}>
+            <label className={`block text-sm font-medium mb-1.5 ${darkMode ? 'text-gray-300' : 'text-[#374151]'}`}>
               Report Recipient Email <span className="text-red-500">*</span>
             </label>
-            <input
-              type="email"
-              value={reportSettings.email}
+            <input type="email" value={reportSettings.email}
               onChange={(e) => setReportSettings(prev => ({ ...prev, email: e.target.value }))}
-              placeholder="admin@yourdomain.com"
-              required
+              placeholder="admin@yourdomain.com" required
               className={`w-full px-4 py-3 border rounded-lg text-sm focus:ring-2 focus:ring-[#2FB7A1] focus:border-transparent transition ${
-                darkMode
-                  ? 'bg-[#0d1117] border-[#1f2937] text-white placeholder-gray-500'
-                  : 'bg-white border-[#E3E8EF] text-[#0F172A] placeholder-[#94A3B8]'
+                darkMode ? 'bg-[#0d1117] border-[#1f2937] text-white placeholder-gray-500' : 'bg-white border-[#E3E8EF] text-[#0F172A]'
               }`}
             />
-            <p className={`text-xs mt-1 ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>
-              PDF reports will be sent to this address automatically
-            </p>
           </div>
-
-          {/* Interval Input */}
           <div>
-            <label className={`block text-sm font-medium mb-1.5 ${
-              darkMode ? 'text-gray-300' : 'text-[#374151]'
-            }`}>
+            <label className={`block text-sm font-medium mb-1.5 ${darkMode ? 'text-gray-300' : 'text-[#374151]'}`}>
               Send Interval (Days) <span className="text-red-500">*</span>
             </label>
             <div className="flex items-center gap-3">
-              <input
-                type="number"
-                min="1"
-                max="90"
-                value={reportSettings.intervalDays}
-                onChange={(e) => setReportSettings(prev => ({
-                  ...prev,
-                  intervalDays: parseInt(e.target.value) || 7
-                }))}
+              <input type="number" min="1" max="90" value={reportSettings.intervalDays}
+                onChange={(e) => setReportSettings(prev => ({ ...prev, intervalDays: parseInt(e.target.value) || 7 }))}
                 required
                 className={`w-32 px-4 py-3 border rounded-lg text-sm focus:ring-2 focus:ring-[#2FB7A1] focus:border-transparent transition text-center font-semibold ${
-                  darkMode
-                    ? 'bg-[#0d1117] border-[#1f2937] text-white'
-                    : 'bg-white border-[#E3E8EF] text-[#0F172A]'
+                  darkMode ? 'bg-[#0d1117] border-[#1f2937] text-white' : 'bg-white border-[#E3E8EF] text-[#0F172A]'
                 }`}
               />
-              <span className={`text-sm ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>
-                days between each report
-              </span>
+              <span className={`text-sm ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>days between each report</span>
             </div>
-
-            {/* Quick preset buttons */}
             <div className="flex flex-wrap gap-2 mt-2">
               {[1, 3, 7, 14, 30].map(d => (
-                <button
-                  key={d}
-                  type="button"
+                <button key={d} type="button"
                   onClick={() => setReportSettings(prev => ({ ...prev, intervalDays: d }))}
                   className={`px-3 py-1 rounded-full text-xs font-medium border transition ${
                     reportSettings.intervalDays === d
                       ? 'bg-[#2FB7A1] text-white border-[#2FB7A1]'
-                      : darkMode
-                      ? 'border-[#1f2937] text-gray-400 hover:border-[#2FB7A1] hover:text-[#2FB7A1]'
+                      : darkMode ? 'border-[#1f2937] text-gray-400 hover:border-[#2FB7A1] hover:text-[#2FB7A1]'
                       : 'border-[#E3E8EF] text-[#64748B] hover:border-[#2FB7A1] hover:text-[#2FB7A1]'
-                  }`}
-                >
+                  }`}>
                   {d === 1 ? 'Daily' : d === 7 ? 'Weekly' : d === 14 ? 'Biweekly' : d === 30 ? 'Monthly' : `${d} days`}
                 </button>
               ))}
             </div>
-            <p className={`text-xs mt-1 ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>
-              Reports restart their countdown when the server restarts
-            </p>
           </div>
-
-          {/* Actions */}
           <div className="flex items-center gap-3 pt-2">
-            <button
-              type="submit"
-              disabled={loadingSettings}
-              className="px-6 py-2.5 bg-[#2FB7A1] text-white rounded-lg text-sm font-semibold hover:bg-[#28a085] disabled:opacity-50 transition shadow-sm"
-            >
+            <button type="submit" disabled={loadingSettings}
+              className="px-6 py-2.5 bg-[#2FB7A1] text-white rounded-lg text-sm font-semibold hover:bg-[#28a085] disabled:opacity-50 transition shadow-sm">
               {loadingSettings ? 'Saving...' : 'Save Settings'}
             </button>
-
-            <button
-              type="button"
+            <button type="button"
               onClick={async () => {
                 const result = await apiCall('/reports/send-email', { method: 'POST' });
                 showToast(result.ok ? '✓ Reports sent successfully!' : result.error || 'Failed to send.');
                 addNotification('success', 'Email report sent successfully');
               }}
               className={`px-6 py-2.5 rounded-lg text-sm font-semibold border transition ${
-                darkMode
-                  ? 'border-[#1f2937] text-gray-300 hover:bg-[#1f2937]'
-                  : 'border-[#E3E8EF] text-[#374151] hover:bg-[#F8FAFC]'
-              }`}
-            >
+                darkMode ? 'border-[#1f2937] text-gray-300 hover:bg-[#1f2937]' : 'border-[#E3E8EF] text-[#374151] hover:bg-[#F8FAFC]'
+              }`}>
               ✉ Send Now
             </button>
-
-            {settingsSaved && (
-              <span className="text-sm font-medium text-[#2FB7A1] flex items-center gap-1">
-                ✓ Settings saved
-              </span>
-            )}
+            {settingsSaved && <span className="text-sm font-medium text-[#2FB7A1] flex items-center gap-1">✓ Settings saved</span>}
           </div>
         </div>
       </form>
     </div>
 
-    {/* Current Settings Summary */}
-    <div className={`rounded-xl border p-4 text-sm ${
-      darkMode ? 'bg-[#0d1117] border-[#1f2937] text-gray-400' : 'bg-[#F8FAFC] border-[#E3E8EF] text-[#64748B]'
-    }`}>
-      <p className="font-medium mb-1">Current Configuration</p>
-      <p>📧 Reports sending to: <span className={`font-semibold ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>{reportSettings.email || 'Not set'}</span></p>
-      <p>⏱ Interval: <span className={`font-semibold ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>Every {reportSettings.intervalDays} day{reportSettings.intervalDays !== 1 ? 's' : ''}</span></p>
-    </div>
-  {/* Logout Section */}
-{onLogout && (
-  <div className={`rounded-xl border p-6 shadow-sm ${
-    darkMode ? 'bg-[#111827] border-[#1f2937]' : 'bg-white border-[#E3E8EF]'
-  }`}>
-    <div className="flex items-center gap-3 mb-5 pb-4 border-b border-[#E3E8EF] dark:border-[#1f2937]">
-      <div className="w-9 h-9 rounded-lg bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
-        <svg width="18" height="18" fill="none" stroke="#ef4444" strokeWidth="2" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
-        </svg>
-      </div>
-      <div>
-        <h3 className={`font-semibold ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>
-          Session
-        </h3>
-        <p className={`text-xs mt-0.5 ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>
-          Signed in as <span className="font-semibold capitalize">{userRole}</span>
-        </p>
-      </div>
-    </div>
-    <button
-      onClick={() => setShowLogoutToast(true)}
-      className="px-5 py-2.5 bg-red-500 hover:bg-red-600 active:bg-red-700 text-white rounded-lg text-sm font-semibold transition shadow-sm"
-    >
-      Sign Out
-    </button>
-  </div>
-)}
-
-{/* Logout Toast */}
-{showLogoutToast && (
-  <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
-    <div className={`flex items-center gap-4 px-5 py-3.5 rounded-xl shadow-2xl border ${
-      darkMode
-        ? 'bg-[#111827] border-[#1f2937] text-white'
-        : 'bg-white border-[#E3E8EF] text-[#0F172A]'
-    }`}>
-      {/* Icon */}
-      <div className="w-8 h-8 rounded-lg bg-red-100 dark:bg-red-900/20 flex items-center justify-center shrink-0">
-        <svg width="16" height="16" fill="none" stroke="#ef4444" strokeWidth="2" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
-        </svg>
-      </div>
-      {/* Message */}
-      <div className="mr-2">
-        <p className="text-sm font-semibold">Sign out?</p>
-        <p className={`text-xs mt-0.5 ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>
-          You'll need to log back in to access the portal.
-        </p>
-      </div>
-      {/* Actions */}
-      <div className="flex items-center gap-2 shrink-0">
-        <button
-          onClick={() => setShowLogoutToast(false)}
-          className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition ${
-            darkMode
-              ? 'bg-[#1f2937] hover:bg-[#374151] text-gray-300'
-              : 'bg-gray-100 hover:bg-gray-200 text-[#0F172A]'
-          }`}
-        >
-          Cancel
-        </button>
-        <button
-          onClick={() => { setShowLogoutToast(false); onLogout(); }}
-          className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-red-500 hover:bg-red-600 text-white transition"
-        >
+    {/* ── Logout ── */}
+    {onLogout && (
+      <div className={`rounded-xl border p-6 shadow-sm ${darkMode ? 'bg-[#111827] border-[#1f2937]' : 'bg-white border-[#E3E8EF]'}`}>
+        <div className="flex items-center gap-3 mb-5 pb-4 border-b border-[#E3E8EF] dark:border-[#1f2937]">
+          <div className="w-9 h-9 rounded-lg bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
+            <svg width="18" height="18" fill="none" stroke="#ef4444" strokeWidth="2" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+            </svg>
+          </div>
+          <div>
+            <h3 className={`font-semibold ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>Session</h3>
+            <p className={`text-xs mt-0.5 ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>Signed in as <span className="font-semibold capitalize">{userRole}</span></p>
+          </div>
+        </div>
+        <button onClick={() => setShowLogoutToast(true)}
+          className="px-5 py-2.5 bg-red-500 hover:bg-red-600 active:bg-red-700 text-white rounded-lg text-sm font-semibold transition shadow-sm">
           Sign Out
         </button>
       </div>
-    </div>
-  </div>
-)}
+    )}
+
+    {showLogoutToast && (
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
+        <div className={`flex items-center gap-4 px-5 py-3.5 rounded-xl shadow-2xl border ${darkMode ? 'bg-[#111827] border-[#1f2937] text-white' : 'bg-white border-[#E3E8EF] text-[#0F172A]'}`}>
+          <div className="w-8 h-8 rounded-lg bg-red-100 dark:bg-red-900/20 flex items-center justify-center shrink-0">
+            <svg width="16" height="16" fill="none" stroke="#ef4444" strokeWidth="2" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+            </svg>
+          </div>
+          <div className="mr-2">
+            <p className="text-sm font-semibold">Sign out?</p>
+            <p className={`text-xs mt-0.5 ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>You'll need to log back in to access the portal.</p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button onClick={() => setShowLogoutToast(false)}
+              className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition ${darkMode ? 'bg-[#1f2937] hover:bg-[#374151] text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-[#0F172A]'}`}>
+              Cancel
+            </button>
+            <button onClick={() => { setShowLogoutToast(false); onLogout(); }}
+              className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-red-500 hover:bg-red-600 text-white transition">
+              Sign Out
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
   </div>
 )}
 
@@ -5128,7 +5258,9 @@ const InventorySystem = ({ onLogout }) => {
             // Convert FormData to object
             const data = {
               productId: formData.get('productId'),
-              productName: formData.get('productName'),
+              productName: formData.get('productName') === '__custom__' || !formData.get('productName')
+              ? formData.get('productNameCustom')
+              : formData.get('productName'),
               batchId: formData.get('batchId'),
               category: formData.get('category') || 'Uncategorized',
               description: formData.get('description') || '',
@@ -5154,8 +5286,8 @@ const InventorySystem = ({ onLogout }) => {
               showToast('Please enter a batch ID.');
               return;
             }
-            if (!data.dateReceived) {
-              showToast('Please select a received date.');
+            if (!data.dateReceived || data.dateReceived === '') {
+              showToast('Please select a complete date (DD · MMM · YY).');
               return;
             }
             const qty = parseFloat(data.quantity);
@@ -5218,7 +5350,7 @@ const InventorySystem = ({ onLogout }) => {
               totalProfitDisplay.className = totalProfitDisplay.className.replace(/text-(red|green)-\d+/g, '') + (totalProfit >= 0 ? (darkMode ? ' text-green-400' : ' text-green-600') : (darkMode ? ' text-red-400' : ' text-red-600'));
             }
           }}>
-            <div className="space-y-6">
+           
               {/* BLOCK A: BASIC PRODUCT INFORMATION */}
               <div className="space-y-4">
                 <div className="flex items-center gap-2 pb-2 border-b border-gray-200 dark:border-[#2A2A2A]">
@@ -5226,45 +5358,6 @@ const InventorySystem = ({ onLogout }) => {
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Basic Product Information</h3>
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Product Name <span className="text-red-500">*</span>
-                    </label>
-                    <input 
-                      name="productName" 
-                      placeholder="Enter product name" 
-                      className={`w-full px-4 py-3 border rounded-lg transition-all ${
-                        darkMode 
-                          ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white placeholder-gray-400 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]' 
-                          : 'bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
-                      }`}
-                      required 
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Category <span className="text-red-500">*</span>
-                    </label>
-                    <input 
-                      name="category" 
-                      list="category-options"
-                      placeholder="Select or type a category" 
-                      className={`w-full px-4 py-3 border rounded-lg transition-all ${
-                        darkMode 
-                          ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white placeholder-gray-400 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]' 
-                          : 'bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
-                      }`}
-                      required 
-                    />
-                    <datalist id="category-options">
-                      {getUniqueCategories().map((cat) => (
-                        <option key={cat} value={cat} />
-                      ))}
-                    </datalist>
-                  </div>
-                </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
@@ -5302,37 +5395,38 @@ const InventorySystem = ({ onLogout }) => {
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Date Added <span className="text-red-500">*</span>
-                    </label>
-                    <input 
-                      name="dateReceived" 
-                      type="date" 
-                      className={`w-full px-4 py-3 border rounded-lg transition-all ${
-                        darkMode 
-                          ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]' 
-                          : 'bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
-                      }`}
-                      required 
-                    />
-                  </div>
+                <div>
+                <div>
+  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+    Date Added <span className="text-red-500">*</span>
+  </label>
+  <input 
+    name="dateReceived" 
+    type="date" 
+    className={`w-full px-4 py-3 border rounded-lg transition-all ${
+      darkMode 
+        ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]' 
+        : 'bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
+    }`}
+    required 
+  />
+</div>
                   
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Product ID <span className="text-red-500">*</span>
-                    </label>
-                    <input 
-                      name="productId" 
-                      placeholder="e.g., PROD-001" 
-                      className={`w-full px-4 py-3 border rounded-lg transition-all ${
-                        darkMode 
-                          ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white placeholder-gray-400 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]' 
-                          : 'bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
-                      }`}
-                      required 
-                    />
-                  </div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Product ID <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          name="productId"
+                          placeholder="Auto-filled from product selection"
+                          className={`w-full px-4 py-3 border rounded-lg transition-all font-mono ${
+                            darkMode
+                              ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white placeholder-gray-400 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
+                              : 'bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
+                          }`}
+                          required
+                        />
+                      </div>
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
