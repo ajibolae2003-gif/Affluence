@@ -5163,9 +5163,14 @@ const InventorySystem = ({ onLogout }) => {
               showToast('Please enter a valid quantity greater than 0.');
               return;
             }
+            const totalAmountPaid = parseFloat(formData.get('totalAmountPaid'));
+            if (Number.isNaN(totalAmountPaid) || totalAmountPaid < 0) {
+              showToast('Please enter a valid total amount paid.');
+              return;
+            }
             const cost = parseFloat(data.cost);
             if (!data.cost || Number.isNaN(cost) || cost < 0) {
-              showToast('Please enter a valid cost per unit.');
+              showToast('Cost per unit could not be calculated. Please check quantity and total amount paid.');
               return;
             }
             const price = parseFloat(data.price);
@@ -5177,53 +5182,40 @@ const InventorySystem = ({ onLogout }) => {
             handleAddInventory(data);
           }}
           onInput={(e) => {
-            // Real-time calculation for Total Cost and Profit
             const form = e.currentTarget;
-            const costInput = form.querySelector('[name="cost"]') || form.querySelector('#cost-input') || form.querySelector('#cost-input-tablet') || form.querySelector('#cost-input-mobile');
-            const shippingInput = form.querySelector('[name="shippingCost"]') || form.querySelector('#shipping-input') || form.querySelector('#shipping-input-tablet') || form.querySelector('#shipping-input-mobile');
-            const priceInput = form.querySelector('[name="price"]') || form.querySelector('#price-input') || form.querySelector('#price-input-tablet') || form.querySelector('#price-input-mobile');
-            const quantityInput = form.querySelector('[name="quantity"]');
-            
+            const totalAmountPaidInput = form.querySelector('#total-amount-paid-input') || form.querySelector('#total-amount-paid-input-tablet') || form.querySelector('#total-amount-paid-input-mobile');
+            const shippingInput = form.querySelector('#shipping-input') || form.querySelector('#shipping-input-tablet') || form.querySelector('#shipping-input-mobile');
             const totalCostDisplay = form.querySelector('#total-cost-display') || form.querySelector('#total-cost-display-tablet') || form.querySelector('#total-cost-display-mobile');
+            const costInput = form.querySelector('#cost-input') || form.querySelector('#cost-input-tablet') || form.querySelector('#cost-input-mobile');
+            const priceInput = form.querySelector('#price-input') || form.querySelector('#price-input-tablet') || form.querySelector('#price-input-mobile');
+            const quantityInput = form.querySelector('[name="quantity"]');
             const profitPerUnitDisplay = form.querySelector('#profit-per-unit-display');
             const totalProfitDisplay = form.querySelector('#total-profit-display');
-            
-            if (costInput && shippingInput && quantityInput && totalCostDisplay) {
-              const cost = parseFloat(costInput.value) || 0;
-              const shipping = parseFloat(shippingInput.value) || 0;
-              const quantity = parseFloat(quantityInput.value) || 0;
-              
-              // Calculate shipping per unit (if shipping is per batch)
-              const shippingPerUnit = quantity > 0 ? shipping / quantity : 0;
-              
-              // Total Cost per Unit = Cost per Unit + Shipping per Unit
-              const totalCostPerUnit = cost + shippingPerUnit;
-              
-              totalCostDisplay.value = totalCostPerUnit.toFixed(2);
-            }
-            
-            if (priceInput && totalCostDisplay && profitPerUnitDisplay && totalProfitDisplay && quantityInput) {
-              const price = parseFloat(priceInput.value) || 0;
-              const totalCostPerUnit = parseFloat(totalCostDisplay.value) || 0;
-              const quantity = parseFloat(quantityInput.value) || 0;
-              
-              // Expected Profit Per Unit = Selling Price - Total Cost
-              const profitPerUnit = price - totalCostPerUnit;
-              
-              // Expected Total Profit = Expected Profit Per Unit × Quantity
-              const totalProfit = profitPerUnit * quantity;
-              
+
+            const totalAmountPaid = parseFloat(totalAmountPaidInput?.value) || 0;
+            const shipping = parseFloat(shippingInput?.value) || 0;
+            const quantity = parseFloat(quantityInput?.value) || 0;
+
+            // Total Cost = Amount Paid + Delivery Cost
+            const totalCost = totalAmountPaid + shipping;
+            if (totalCostDisplay) totalCostDisplay.value = totalCost.toFixed(2);
+
+            // Cost per Unit = Total Cost / Quantity
+            const costPerUnit = quantity > 0 ? totalCost / quantity : 0;
+            if (costInput) costInput.value = costPerUnit.toFixed(2);
+
+            // Profit calculations
+            const price = parseFloat(priceInput?.value) || 0;
+            const profitPerUnit = price - costPerUnit;
+            const totalProfit = profitPerUnit * quantity;
+
+            if (profitPerUnitDisplay) {
               profitPerUnitDisplay.value = profitPerUnit.toFixed(2);
+              profitPerUnitDisplay.className = profitPerUnitDisplay.className.replace(/text-(red|green)-\d+/g, '') + (profitPerUnit >= 0 ? (darkMode ? ' text-green-400' : ' text-green-600') : (darkMode ? ' text-red-400' : ' text-red-600'));
+            }
+            if (totalProfitDisplay) {
               totalProfitDisplay.value = totalProfit.toFixed(2);
-              
-              // Color coding: green for profit, red for loss
-              if (profitPerUnit >= 0) {
-                profitPerUnitDisplay.className = profitPerUnitDisplay.className.replace(/text-(red|green)-\d+|text-gray-\d+/g, '') + (darkMode ? ' text-green-400' : ' text-green-600');
-                totalProfitDisplay.className = totalProfitDisplay.className.replace(/text-(red|green)-\d+|text-gray-\d+/g, '') + (darkMode ? ' text-green-400' : ' text-green-600');
-              } else {
-                profitPerUnitDisplay.className = profitPerUnitDisplay.className.replace(/text-(red|green)-\d+|text-gray-\d+/g, '') + (darkMode ? ' text-red-400' : ' text-red-600');
-                totalProfitDisplay.className = totalProfitDisplay.className.replace(/text-(red|green)-\d+|text-gray-\d+/g, '') + (darkMode ? ' text-red-400' : ' text-red-600');
-              }
+              totalProfitDisplay.className = totalProfitDisplay.className.replace(/text-(red|green)-\d+/g, '') + (totalProfit >= 0 ? (darkMode ? ' text-green-400' : ' text-green-600') : (darkMode ? ' text-red-400' : ' text-red-600'));
             }
           }}>
             <div className="space-y-6">
@@ -5394,91 +5386,340 @@ const InventorySystem = ({ onLogout }) => {
                     : 'bg-gradient-to-br from-[#F0FDF4] to-[#ECFDF5] border-[#2FB7A1]/20'
                 }`}>
                   {/* Desktop: Single Row */}
-                  <div className="hidden md:grid md:grid-cols-4 gap-4">
+ {/* Desktop: Single Row */}
+ <div className="hidden md:grid md:grid-cols-5 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Cost per Unit <span className="text-red-500">*</span>
+                        Total Amount Paid <span className="text-red-500">*</span>
                       </label>
                       <div className="relative">
                         <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400">₦</span>
-                        <input 
-                          name="cost" 
-                          id="cost-input"
-                          type="number" 
-                          step="0.01" 
+                        <input
+                          name="totalAmountPaid"
+                          id="total-amount-paid-input"
+                          type="number"
+                          step="0.01"
                           min="0"
-                          placeholder="0.00" 
+                          placeholder="0.00"
                           className={`w-full pl-8 pr-4 py-3 border rounded-lg transition-all ${
-                            darkMode 
-                              ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white placeholder-gray-400 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]' 
+                            darkMode
+                              ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white placeholder-gray-400 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
                               : 'bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
                           }`}
+                          required
                         />
                       </div>
                     </div>
-                    
+
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Shipping/Delivery Cost
+                        Delivery Cost
                       </label>
                       <div className="relative">
                         <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400">₦</span>
-                        <input 
-                          name="shippingCost" 
+                        <input
+                          name="shippingCost"
                           id="shipping-input"
-                          type="number" 
-                          step="0.01" 
+                          type="number"
+                          step="0.01"
                           min="0"
-                          placeholder="0.00" 
+                          placeholder="0.00"
                           defaultValue="0"
                           className={`w-full pl-8 pr-4 py-3 border rounded-lg transition-all ${
-                            darkMode 
-                              ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white placeholder-gray-400 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]' 
+                            darkMode
+                              ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white placeholder-gray-400 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
                               : 'bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
                           }`}
                         />
                       </div>
                     </div>
-                    
+
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         Total Cost (AUTO)
                       </label>
                       <div className="relative">
                         <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400">₦</span>
-                        <input 
+                        <input
                           id="total-cost-display"
-                          type="text" 
+                          type="text"
                           readOnly
-                          value="0.00"
+                          defaultValue="0.00"
                           className={`w-full pl-8 pr-4 py-3 border rounded-lg ${
-                            darkMode 
-                              ? 'bg-gray-700/50 border-[#2A2A2A] text-gray-300 cursor-not-allowed' 
+                            darkMode
+                              ? 'bg-gray-700/50 border-[#2A2A2A] text-gray-300 cursor-not-allowed'
                               : 'bg-gray-100 border-gray-300 text-gray-700 cursor-not-allowed'
                           }`}
                         />
                       </div>
                     </div>
-                    
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Cost per Unit (AUTO)
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400">₦</span>
+                        <input
+                          name="cost"
+                          id="cost-input"
+                          type="text"
+                          readOnly
+                          defaultValue="0.00"
+                          className={`w-full pl-8 pr-4 py-3 border rounded-lg ${
+                            darkMode
+                              ? 'bg-gray-700/50 border-[#2A2A2A] text-gray-300 cursor-not-allowed'
+                              : 'bg-gray-100 border-gray-300 text-gray-700 cursor-not-allowed'
+                          }`}
+                        />
+                      </div>
+                    </div>
+
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         Selling Price <span className="text-red-500">*</span>
                       </label>
                       <div className="relative">
                         <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400">₦</span>
-                        <input 
-                          name="price" 
+                        <input
+                          name="price"
                           id="price-input"
-                          type="number" 
-                          step="0.01" 
+                          type="number"
+                          step="0.01"
                           min="0"
-                          placeholder="0.00" 
+                          placeholder="0.00"
                           className={`w-full pl-8 pr-4 py-3 border rounded-lg transition-all ${
-                            darkMode 
-                              ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white placeholder-gray-400 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]' 
+                            darkMode
+                              ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white placeholder-gray-400 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
                               : 'bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
                           }`}
-                          required 
+                          required
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Tablet: Two Rows */}
+                  <div className="hidden sm:grid sm:grid-cols-2 md:hidden gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Total Amount Paid <span className="text-red-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400">₦</span>
+                        <input
+                          name="totalAmountPaid"
+                          id="total-amount-paid-input-tablet"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          placeholder="0.00"
+                          className={`w-full pl-8 pr-4 py-3 border rounded-lg transition-all ${
+                            darkMode
+                              ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white placeholder-gray-400 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
+                              : 'bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
+                          }`}
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Delivery Cost
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400">₦</span>
+                        <input
+                          name="shippingCost"
+                          id="shipping-input-tablet"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          placeholder="0.00"
+                          defaultValue="0"
+                          className={`w-full pl-8 pr-4 py-3 border rounded-lg transition-all ${
+                            darkMode
+                              ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white placeholder-gray-400 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
+                              : 'bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
+                          }`}
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Total Cost (AUTO)
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400">₦</span>
+                        <input
+                          id="total-cost-display-tablet"
+                          type="text"
+                          readOnly
+                          defaultValue="0.00"
+                          className={`w-full pl-8 pr-4 py-3 border rounded-lg ${
+                            darkMode
+                              ? 'bg-gray-700/50 border-[#2A2A2A] text-gray-300 cursor-not-allowed'
+                              : 'bg-gray-100 border-gray-300 text-gray-700 cursor-not-allowed'
+                          }`}
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Cost per Unit (AUTO)
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400">₦</span>
+                        <input
+                          name="cost"
+                          id="cost-input-tablet"
+                          type="text"
+                          readOnly
+                          defaultValue="0.00"
+                          className={`w-full pl-8 pr-4 py-3 border rounded-lg ${
+                            darkMode
+                              ? 'bg-gray-700/50 border-[#2A2A2A] text-gray-300 cursor-not-allowed'
+                              : 'bg-gray-100 border-gray-300 text-gray-700 cursor-not-allowed'
+                          }`}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Selling Price <span className="text-red-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400">₦</span>
+                        <input
+                          name="price"
+                          id="price-input-tablet"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          placeholder="0.00"
+                          className={`w-full pl-8 pr-4 py-3 border rounded-lg transition-all ${
+                            darkMode
+                              ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white placeholder-gray-400 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
+                              : 'bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
+                          }`}
+                          required
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Mobile: Stack Vertically */}
+                  <div className="grid sm:hidden gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Total Amount Paid <span className="text-red-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400">₦</span>
+                        <input
+                          name="totalAmountPaid"
+                          id="total-amount-paid-input-mobile"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          placeholder="0.00"
+                          className={`w-full pl-8 pr-4 py-3 border rounded-lg transition-all ${
+                            darkMode
+                              ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white placeholder-gray-400 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
+                              : 'bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
+                          }`}
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Delivery Cost
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400">₦</span>
+                        <input
+                          name="shippingCost"
+                          id="shipping-input-mobile"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          placeholder="0.00"
+                          defaultValue="0"
+                          className={`w-full pl-8 pr-4 py-3 border rounded-lg transition-all ${
+                            darkMode
+                              ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white placeholder-gray-400 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
+                              : 'bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
+                          }`}
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Total Cost (AUTO)
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400">₦</span>
+                        <input
+                          id="total-cost-display-mobile"
+                          type="text"
+                          readOnly
+                          defaultValue="0.00"
+                          className={`w-full pl-8 pr-4 py-3 border rounded-lg ${
+                            darkMode
+                              ? 'bg-gray-700/50 border-[#2A2A2A] text-gray-300 cursor-not-allowed'
+                              : 'bg-gray-100 border-gray-300 text-gray-700 cursor-not-allowed'
+                          }`}
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Cost per Unit (AUTO)
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400">₦</span>
+                        <input
+                          name="cost"
+                          id="cost-input-mobile"
+                          type="text"
+                          readOnly
+                          defaultValue="0.00"
+                          className={`w-full pl-8 pr-4 py-3 border rounded-lg ${
+                            darkMode
+                              ? 'bg-gray-700/50 border-[#2A2A2A] text-gray-300 cursor-not-allowed'
+                              : 'bg-gray-100 border-gray-300 text-gray-700 cursor-not-allowed'
+                          }`}
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Selling Price <span className="text-red-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400">₦</span>
+                        <input
+                          name="price"
+                          id="price-input-mobile"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          placeholder="0.00"
+                          className={`w-full pl-8 pr-4 py-3 border rounded-lg transition-all ${
+                            darkMode
+                              ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white placeholder-gray-400 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
+                              : 'bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
+                          }`}
+                          required
                         />
                       </div>
                     </div>
