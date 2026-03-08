@@ -5233,7 +5233,7 @@ const InventorySystem = ({ onLogout }) => {
 
       {/* Modals */}
       {showModal && modalType === 'addInventory' && (
-        <Modal onClose={() => { setShowModal(false); setImagePreview(null); }} title="Add New Product" darkMode={darkMode} size="xl">
+        <Modal onClose={() => { setShowModal(false); setImagePreview(null); setQtyType('pieces'); }} title="Add New Product" darkMode={darkMode} size="xl">
           <form onSubmit={async (e) => {
             e.preventDefault();
             const formData = new FormData(e.target);
