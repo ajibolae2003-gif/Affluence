@@ -757,13 +757,16 @@ const InventorySystem = ({ onLogout }) => {
     }
   };
 
-  const handleAddQuantity = async (productId, quantityToAdd) => {
+  const handleAddQuantity = async (productId, quantityToAdd, costPrice, sellingPrice) => {
     try {
       setLoading(true);
       const result = await apiCall(`/inventory/${productId}`, {
         method: 'PATCH',
         body: JSON.stringify({
-          quantity: parseInt(quantityToAdd)
+          quantity: parseInt(quantityToAdd),
+          // Allow backend to create a new batch with its own cost & selling price
+          cost: costPrice != null ? parseFloat(costPrice) : undefined,
+          price: sellingPrice != null ? parseFloat(sellingPrice) : undefined,
         })
       });
       
@@ -3292,32 +3295,39 @@ const InventorySystem = ({ onLogout }) => {
 
                           {/* ── Action Buttons ── */}
                           <div className="flex gap-2">
-                            <button
-                              onClick={e => {
-                                e.stopPropagation();
-                                handleUpdateShipping(ship.id, { status: 'transit' });
-                              }}
-                              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-md text-xs font-semibold border transition ${
-                                darkMode
-                                  ? 'border-blue-700 text-blue-300 hover:bg-blue-900/20'
-                                  : 'border-[#BFDBFE] text-blue-700 bg-blue-50 hover:bg-blue-100'
-                              }`}
-                            >
-                              <Truck size={13} />
-                              Mark In Transit
-                            </button>
-                            <button
-                              onClick={e => {
-                                e.stopPropagation();
-                                if (confirm('Mark as delivered? This will lock the order.')) {
-                                  handleUpdateShipping(ship.id, { status: 'shipped' });
-                                }
-                              }}
-                              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-md text-xs font-semibold text-white bg-[#2FB7A1] hover:bg-[#28a085] active:bg-[#239e7a] transition shadow-sm"
-                            >
-                              <Package size={13} />
-                              Mark Delivered
-                            </button>
+                            {/* When pending: only allow moving to transit */}
+                            {ship.status === 'pending' && (
+                              <button
+                                onClick={e => {
+                                  e.stopPropagation();
+                                  handleUpdateShipping(ship.id, { status: 'transit' });
+                                }}
+                                className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-md text-xs font-semibold border transition ${
+                                  darkMode
+                                    ? 'border-blue-700 text-blue-300 hover:bg-blue-900/20'
+                                    : 'border-[#BFDBFE] text-blue-700 bg-blue-50 hover:bg-blue-100'
+                                }`}
+                              >
+                                <Truck size={13} />
+                                Mark In Transit
+                              </button>
+                            )}
+
+                            {/* When in transit: only allow marking delivered */}
+                            {ship.status === 'transit' && (
+                              <button
+                                onClick={e => {
+                                  e.stopPropagation();
+                                  if (confirm('Mark as delivered? This will lock the order.')) {
+                                    handleUpdateShipping(ship.id, { status: 'shipped' });
+                                  }
+                                }}
+                                className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-md text-xs font-semibold text-white bg-[#2FB7A1] hover:bg-[#28a085] active:bg-[#239e7a] transition shadow-sm"
+                              >
+                                <Package size={13} />
+                                Mark Delivered
+                              </button>
+                            )}
                           </div>
                         </div>
                       )}
@@ -5286,7 +5296,7 @@ const InventorySystem = ({ onLogout }) => {
               return;
             }
             if (!data.dateReceived || data.dateReceived === '') {
-              showToast('Please select a complete date (DD · MMM · YY).');
+              showToast('Please enter a complete date in the format DD-MMM-YYYY (e.g. 05-Mar-2026).');
               return;
             }
             const hiddenQtyEl = e.target.querySelector('input[name="quantity"]');
@@ -5662,14 +5672,18 @@ const InventorySystem = ({ onLogout }) => {
       </label>
       <input
         name="dateReceived"
-        type="date"
+        type="text"
+        placeholder="e.g. 05-Mar-2026"
         className={`w-full px-4 py-3 border rounded-lg transition-all ${
           darkMode
-            ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
-            : 'bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
+            ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white placeholder-gray-500 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
+            : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
         }`}
         required
       />
+      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+        Format: DD-MMM-YYYY (e.g. 05-Mar-2026)
+      </p>
     </div>
 
     <div>
@@ -7007,11 +7021,23 @@ const InventorySystem = ({ onLogout }) => {
             e.preventDefault();
             const formData = new FormData(e.target);
             const quantityToAdd = parseInt(formData.get('quantity'));
-            if (quantityToAdd > 0) {
-              handleAddQuantity(productToUpdate.id, quantityToAdd);
-            } else {
+            const costPrice = parseFloat(formData.get('costPrice'));
+            const sellingPrice = parseFloat(formData.get('sellingPrice'));
+
+            if (!quantityToAdd || quantityToAdd <= 0) {
               showToast('Please enter a valid quantity greater than 0');
+              return;
             }
+            if (isNaN(costPrice) || costPrice <= 0) {
+              showToast('Please enter a valid cost price for this new batch');
+              return;
+            }
+            if (isNaN(sellingPrice) || sellingPrice <= 0) {
+              showToast('Please enter a valid selling price for this new batch');
+              return;
+            }
+
+            handleAddQuantity(productToUpdate.id, quantityToAdd, costPrice, sellingPrice);
           }}>
             <div className="space-y-4">
               <div className="bg-[#F5F7FA] rounded-lg p-4 mb-4">
@@ -7036,6 +7062,34 @@ const InventorySystem = ({ onLogout }) => {
                   required 
                 />
                 <p className="text-xs text-[#64748B] mt-1">Enter the number of units received in stock</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-[#64748B] mb-2">Cost Price per Unit (New Batch)</label>
+                <input 
+                  name="costPrice" 
+                  type="number" 
+                  step="0.01"
+                  min="0"
+                  placeholder="Enter cost price for this batch" 
+                  defaultValue={productToUpdate.cost || productToUpdate.latestBatchCostPrice}
+                  className="w-full px-4 py-3 border border-[#E3E8EF] rounded-lg focus:ring-2 focus:ring-[#2FB7A1]" 
+                  required 
+                />
+                <p className="text-xs text-[#64748B] mt-1">This cost will be tracked separately for FIFO and reports.</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-[#64748B] mb-2">Selling Price per Unit (New Batch)</label>
+                <input 
+                  name="sellingPrice" 
+                  type="number" 
+                  step="0.01"
+                  min="0"
+                  placeholder="Enter selling price for this batch" 
+                  defaultValue={productToUpdate.price}
+                  className="w-full px-4 py-3 border border-[#E3E8EF] rounded-lg focus:ring-2 focus:ring-[#2FB7A1]" 
+                  required 
+                />
+                <p className="text-xs text-[#64748B] mt-1">This becomes the new selling price for this batch going forward.</p>
               </div>
               <button type="submit" disabled={loading} className="w-full bg-[#2563EB] text-white py-3 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50">
                 {loading ? 'Adding...' : 'Add to Stock'}

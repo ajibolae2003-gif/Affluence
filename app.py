@@ -563,9 +563,20 @@ def add_inventory():
         
         # Parse date
         try:
-            date_received = datetime.strptime(data['dateReceived'], '%Y-%m-%d').date()
+            # Prefer new UI format: 'DD-MMM-YYYY' (e.g. 05-Mar-2026), but accept legacy 'YYYY-MM-DD' too
+            raw_date = (data.get('dateReceived') or '').strip()
+            date_received = None
+            if raw_date:
+                for fmt in ('%d-%b-%Y', '%d-%B-%Y', '%Y-%m-%d'):
+                    try:
+                        date_received = datetime.strptime(raw_date, fmt).date()
+                        break
+                    except ValueError:
+                        continue
+            if not date_received:
+                raise ValueError('unparsed')
         except ValueError:
-            return jsonify({'error': 'Invalid date format. Use YYYY-MM-DD'}), 400
+            return jsonify({'error': 'Invalid date format. Use DD-MMM-YYYY (e.g. 05-Mar-2026).'}, 400)
         
         # Get or create product
         product = Product.query.filter_by(id=data['productId']).first()
@@ -670,7 +681,25 @@ def update_inventory_quantity(product_id):
                 if not latest_batch:
                     return jsonify({'error': 'No batches found for this product. Please add inventory first.'}), 400
                 
-                # Create a new batch with the same pricing as the latest batch
+                # Determine pricing for the new batch.
+                # If the client sends explicit cost/price, use those; otherwise fall back to latest batch.
+                try:
+                    if 'cost' in data and data['cost'] not in (None, ''):
+                        new_cost_price = float(data['cost'])
+                    else:
+                        new_cost_price = float(latest_batch.cost_price)
+                except (ValueError, TypeError):
+                    return jsonify({'error': 'Invalid cost value for new batch'}, 400)
+
+                try:
+                    if 'price' in data and data['price'] not in (None, ''):
+                        new_selling_price = float(data['price'])
+                    else:
+                        new_selling_price = float(latest_batch.selling_price)
+                except (ValueError, TypeError):
+                    return jsonify({'error': 'Invalid price value for new batch'}, 400)
+
+                # Create a new batch with its own pricing (FIFO-aware via Batch model)
                 from datetime import date
                 import uuid
                 new_batch_id = f"{product_id}-BATCH-{str(uuid.uuid4())[:8].upper()}"
@@ -678,8 +707,8 @@ def update_inventory_quantity(product_id):
                 new_batch = Batch(
                     id=new_batch_id,
                     product_id=product_id,
-                    cost_price=latest_batch.cost_price,
-                    selling_price=latest_batch.selling_price,
+                    cost_price=new_cost_price,
+                    selling_price=new_selling_price,
                     shipping_cost=latest_batch.shipping_cost or 0.0,
                     quantity_added=quantity_to_add,
                     quantity_remaining=quantity_to_add,
@@ -688,6 +717,10 @@ def update_inventory_quantity(product_id):
                     supplier=data.get('supplier') or latest_batch.supplier
                 )
                 db.session.add(new_batch)
+
+                # Keep legacy product pricing roughly in sync with the newest batch
+                product.cost = new_cost_price
+                product.price = new_selling_price
                 
             except (ValueError, TypeError) as e:
                 return jsonify({'error': f'Invalid quantity value: {str(e)}'}), 400
