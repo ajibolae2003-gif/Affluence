@@ -6483,12 +6483,12 @@ const InventorySystem = ({ onLogout }) => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Account Number (Optional)
+                      Customer Bank / Account Number (Optional)
                     </label>
                     <input 
                       name="accountNumber" 
                       defaultValue={selectedCustomerData?.accountNumber || ''}
-                      placeholder="Customer bank account number" 
+                      placeholder="e.g. GTBank · 0123456789" 
                       className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#2FB7A1] ${
                         darkMode 
                           ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white placeholder-gray-400' 
