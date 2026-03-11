@@ -218,6 +218,34 @@ class Customer(db.Model):
             'lastOrderDate': self.last_order_date.strftime('%Y-%m-%d') if self.last_order_date else None
         }
 
+class LoginSession(db.Model):
+    __tablename__ = 'login_sessions'
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    email = db.Column(db.String(200), nullable=False)
+    role = db.Column(db.String(50), nullable=False)
+    name = db.Column(db.String(200), nullable=True)
+    picture = db.Column(db.String(500), nullable=True)
+    device_label = db.Column(db.String(255), nullable=True)
+    user_agent = db.Column(db.Text, nullable=True)
+    ip_address = db.Column(db.String(100), nullable=True)
+    logged_in_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    expires_at = db.Column(db.DateTime, nullable=True)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'email': self.email,
+            'role': self.role,
+            'name': self.name,
+            'picture': self.picture,
+            'deviceLabel': self.device_label,
+            'userAgent': self.user_agent,
+            'ipAddress': self.ip_address,
+            'loggedInAt': self.logged_in_at.isoformat() if self.logged_in_at else None,
+            'expiresAt': self.expires_at.isoformat() if self.expires_at else None,
+        }
+
 class Order(db.Model):
     __tablename__ = 'orders'
     
@@ -1541,6 +1569,58 @@ def google_oauth_callback():
     except Exception as e:
         import traceback
         print(f"OAuth callback error: {traceback.format_exc()}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/auth/session', methods=['POST'])
+def log_auth_session():
+    """Persist each login session / device in the database."""
+    try:
+        data = request.get_json() or {}
+        email = data.get('email')
+        role = data.get('role')
+        name = data.get('name')
+        picture = data.get('picture')
+        device_label = data.get('device') or data.get('deviceLabel')
+
+        if not email or not role:
+            return jsonify({'error': 'Missing required fields: email and role'}), 400
+
+        user_agent = request.headers.get('User-Agent')
+        ip_address = request.headers.get('X-Forwarded-For', request.remote_addr)
+
+        # Frontend sends milliseconds since epoch for expiresAt / loggedInAt
+        logged_in_at = None
+        if data.get('loggedInAt'):
+            try:
+                logged_in_at = datetime.fromtimestamp(data['loggedInAt'] / 1000.0, tz=timezone.utc)
+            except Exception:
+                logged_in_at = datetime.now(timezone.utc)
+
+        expires_at = None
+        if data.get('expiresAt'):
+            try:
+                expires_at = datetime.fromtimestamp(data['expiresAt'] / 1000.0, tz=timezone.utc)
+            except Exception:
+                expires_at = None
+
+        sess = LoginSession(
+            email=email,
+            role=role,
+            name=name,
+            picture=picture,
+            device_label=device_label,
+            user_agent=user_agent,
+            ip_address=ip_address,
+            logged_in_at=logged_in_at or datetime.now(timezone.utc),
+            expires_at=expires_at
+        )
+        db.session.add(sess)
+        db.session.commit()
+
+        return jsonify({'message': 'Session logged', 'session': sess.to_dict()}), 201
+    except Exception as e:
+        db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
 

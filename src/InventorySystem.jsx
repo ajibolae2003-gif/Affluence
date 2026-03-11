@@ -159,6 +159,8 @@ const InventorySystem = ({ onLogout }) => {
   const [reportDateFrom, setReportDateFrom] = useState('');
   const [reportDateTo, setReportDateTo] = useState('');
   const [productAmountInputs, setProductAmountInputs] = useState({});
+  const [orderQuantities, setOrderQuantities] = useState({});
+  const [orderExpectedTotal, setOrderExpectedTotal] = useState(0);
   const [reportProductFilter, setReportProductFilter] = useState('');
   const [reportViewMode, setReportViewMode] = useState('summary'); // summary, detailed
   const [expandedProductId, setExpandedProductId] = useState(null);
@@ -6264,6 +6266,8 @@ const InventorySystem = ({ onLogout }) => {
             setProductDropdownOpen(false);   
             setSelectedProductIds([]);  
             setProductAmountInputs({});      
+            setOrderQuantities({});
+            setOrderExpectedTotal(0);
           }} 
           title={orderStep === 'payment' ? 'Confirm Payment' : 'Add Customer Order'} 
           darkMode={darkMode}
@@ -6680,6 +6684,25 @@ const InventorySystem = ({ onLogout }) => {
                                   : 'bg-white border-[#E3E8EF] text-[#0F172A]'
                               }`}
                               required
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                setOrderQuantities(prev => {
+                                  const next = { ...prev, [id]: value };
+                                  // Recompute expected total using latest quantities and prices
+                                  let total = 0;
+                                  selectedProductIds.forEach(pid => {
+                                    const qty = parseFloat(next[pid] || 0);
+                                    const prod = inventory.find(p => p.id === pid);
+                                    if (!prod) return;
+                                    const price = parseFloat(prod.price || 0);
+                                    if (!Number.isNaN(qty) && !Number.isNaN(price)) {
+                                      total += qty * price;
+                                    }
+                                  });
+                                  setOrderExpectedTotal(total);
+                                  return next;
+                                });
+                              }}
                             />
                           </div>
                         );
@@ -6693,20 +6716,32 @@ const InventorySystem = ({ onLogout }) => {
                     Amount Paid (₦)
                   </label>
                   {selectedProductIds.length <= 1 ? (
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400">₦</span>
-                    <input
-                      name="amountPaid"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      placeholder="Amount paid (optional)"
-                      className={`w-full pl-8 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#2FB7A1] ${
-                        darkMode
-                          ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white placeholder-gray-400'
-                          : 'bg-white border-[#E3E8EF] text-gray-900'
-                      }`}
-                    />
+                  <div>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400">₦</span>
+                      <input
+                        name="amountPaid"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="Amount paid (optional)"
+                        className={`w-full pl-8 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#2FB7A1] ${
+                          darkMode
+                            ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white placeholder-gray-400'
+                            : 'bg-white border-[#E3E8EF] text-gray-900'
+                        }`}
+                      />
+                    </div>
+                    {orderExpectedTotal > 0 && (
+                      <p className={`mt-1 text-xs ${
+                        darkMode ? 'text-gray-400' : 'text-[#64748B]'
+                      }`}>
+                        Expected amount based on quantities above:{' '}
+                        <span className="font-semibold">
+                          ₦{orderExpectedTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                      </p>
+                    )}
                   </div>
                 ) : (
                   <div className={`rounded-lg border overflow-hidden ${

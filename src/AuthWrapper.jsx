@@ -107,6 +107,26 @@ const AuthWrapper = () => {
         expiresAt: Date.now() + 8 * 60 * 60 * 1000, // 8 hours
       };
 
+      // Log this session / device to the backend so it is stored in the database
+      try {
+        await fetch('/api/auth/session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: sess.email,
+            role: sess.role,
+            name: sess.name,
+            picture: sess.picture,
+            loggedInAt: sess.loggedInAt,
+            expiresAt: sess.expiresAt,
+            device: navigator.userAgent || 'Unknown device',
+          }),
+        });
+      } catch (e) {
+        // Non-fatal: continue even if logging fails
+        console.error('Failed to log auth session:', e);
+      }
+
       localStorage.setItem(SESSION_KEY, JSON.stringify(sess));
       localStorage.setItem('userRole', role);
       setSession(sess);
