@@ -13,6 +13,8 @@ const ROLE_MAP = {
   emails: {
     'admin@affluenceglobaldream.com': 'admin',
     'fasloteam@gmail.com': 'admin',
+    "tundee@gmail.com":"admin",
+    "talk2austin007@gmail.com":"admin",
 
     // STaff emails
     'staff1@gmail.com': 'staff',
