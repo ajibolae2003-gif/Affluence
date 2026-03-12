@@ -103,6 +103,7 @@ const InventorySystem = ({ onLogout }) => {
   const [selectedProductOrders, setSelectedProductOrders] = useState([]);
   const [productSearchResults, setProductSearchResults] = useState([]);
   const [qtyType, setQtyType] = useState('pieces'); // 'pieces' | 'carton'
+  const [piecesPerCarton, setPiecesPerCarton] = useState({});
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [loadingInventorySalesReport, setLoadingInventorySalesReport] = useState(false);
   const [inventorySearchQuery, setInventorySearchQuery] = useState('');
@@ -195,6 +196,17 @@ const InventorySystem = ({ onLogout }) => {
     totalSold: 0,
     lowStockCount: 0
   });
+
+  const formatWithCommas = (value) => {
+    const raw = String(value).replace(/,/g, '').replace(/[^0-9.]/g, '');
+    const parts = raw.split('.');
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return parts.slice(0, 2).join('.');
+  };
+
+  const parseCommaNumber = (value) => {
+    return parseFloat(String(value || '').replace(/,/g, '')) || 0;
+  };
 
   const showToast = (message, type = 'success') => {
     const id = Date.now();
@@ -697,9 +709,9 @@ const InventorySystem = ({ onLogout }) => {
           supplier: formData.supplier || '',
           dateReceived: formData.dateReceived,
           quantity: parseInt(formData.quantity),
-          cost: parseFloat(formData.cost),
-          price: parseFloat(formData.price),
-          shippingCost: parseFloat(formData.shippingCost || 0),
+          cost: parseCommaNumber(formData.cost),
+          price: parseCommaNumber(formData.price),
+          shippingCost: parseCommaNumber(formData.shippingCost || 0),
           image: formData.image
         })
       });
@@ -767,8 +779,8 @@ const InventorySystem = ({ onLogout }) => {
         body: JSON.stringify({
           quantity: parseInt(quantityToAdd),
           // Allow backend to create a new batch with its own cost & selling price
-          cost: costPrice != null ? parseFloat(costPrice) : undefined,
-          price: sellingPrice != null ? parseFloat(sellingPrice) : undefined,
+          cost: costPrice != null ? parseCommaNumber(costPrice) : undefined,
+          price: sellingPrice != null ? parseCommaNumber(sellingPrice) : undefined,
         })
       });
       
@@ -965,10 +977,11 @@ const InventorySystem = ({ onLogout }) => {
       let lastOrderData = null;
   
       for (const pid of productIds) {
-        const qtyForPid = quantities[pid] || formData.quantity || 1;
-        const pidAmount = productAmounts[pid] != null && productAmounts[pid] > 0
-          ? productAmounts[pid]
-          : formData.amountPaid || null;
+        const rawQty = quantities[pid] || formData.quantity || 1;
+        const qtyForPid = rawQty; // carton conversion already done via piecesPerCarton state if needed
+        const pidAmount = productAmounts[pid] != null && parseCommaNumber(productAmounts[pid]) > 0
+              ? parseCommaNumber(productAmounts[pid])
+              : formData.amountPaid ? parseCommaNumber(formData.amountPaid) : null;
   
         const result = await apiCall('/orders', {
           method: 'POST',
@@ -1818,7 +1831,7 @@ const InventorySystem = ({ onLogout }) => {
     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
       <div>
         <h2 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>Inventory Management</h2>
-        <p className="text-sm text-[#64748B] mt-1">{inventory.length} products • ₦{calculateStats().totalRevenue.toFixed(0)} revenue</p>
+        <p className="text-sm text-[#64748B] mt-1">{inventory.length} products • ${calculateStats().totalRevenue.toFixed(0)} revenue</p>
       </div>
       <div className="flex gap-2">
         {userRole === 'admin' && (
@@ -1929,7 +1942,7 @@ const InventorySystem = ({ onLogout }) => {
       <span className={`text-xs font-bold uppercase tracking-widest ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Total Revenue</span>
     </div>
     <span className="text-lg font-bold text-[#2FB7A1]">
-      ₦{calculateStats().totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+      ${calculateStats().totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
     </span>
   </div>
 </div>
@@ -2160,15 +2173,15 @@ const InventorySystem = ({ onLogout }) => {
               onClick={(e) => { if (userRole !== 'admin') return; e.stopPropagation(); setProductToEdit(item); openModal('editProduct'); }}
               className={`text-sm font-bold tabular-nums ${userRole === 'admin' ? 'text-[#2FB7A1] hover:underline' : darkMode ? 'text-white cursor-default' : 'text-[#0F172A] cursor-default'}`}
             >
-              ₦{Number(item.price ?? 0).toLocaleString()}
+              ${Number(item.price ?? 0).toLocaleString()}
             </button>
-            <p className={`text-[10px] mt-0.5 ${darkMode ? 'text-gray-600' : 'text-[#CBD5E1]'}`}>cost ₦{Number(item.cost ?? 0).toLocaleString()}</p>
+            <p className={`text-[10px] mt-0.5 ${darkMode ? 'text-gray-600' : 'text-[#CBD5E1]'}`}>cost ${Number(item.cost ?? 0).toLocaleString()}</p>
           </td>
 
           {/* Margin */}
           <td className="px-3 py-3 text-right">
             <span className={`text-sm font-bold tabular-nums ${margin >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>{marginPct}%</span>
-            <p className={`text-[10px] mt-0.5 ${darkMode ? 'text-gray-600' : 'text-[#CBD5E1]'}`}>₦{margin.toLocaleString()}</p>
+            <p className={`text-[10px] mt-0.5 ${darkMode ? 'text-gray-600' : 'text-[#CBD5E1]'}`}>${margin.toLocaleString()}</p>
           </td>
 
           {/* Status */}
@@ -2231,7 +2244,7 @@ const InventorySystem = ({ onLogout }) => {
       </td>
       <td colSpan={4} className="px-3 py-2.5 text-right">
         <span className="text-xs font-bold tabular-nums text-[#2FB7A1]">
-          ₦{filteredInventory.reduce((s, i) => s + (i.sold ?? 0) * (i.price ?? 0), 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          ${filteredInventory.reduce((s, i) => s + (i.sold ?? 0) * (i.price ?? 0), 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </span>
       </td>
     </tr>
@@ -2355,7 +2368,7 @@ const InventorySystem = ({ onLogout }) => {
                 <p className={`text-base font-bold leading-none ${
                   darkMode ? 'text-white' : 'text-[#0F172A]'
                 }`}>
-                  ₦{Number(item.price ?? 0).toLocaleString()}
+                  ${Number(item.price ?? 0).toLocaleString()}
                 </p>
               </div>
             </div>
@@ -2374,7 +2387,7 @@ const InventorySystem = ({ onLogout }) => {
                   ? 'text-emerald-600 dark:text-emerald-400'
                   : 'text-red-500 dark:text-red-400'
               }`}>
-                Margin ₦{margin.toFixed(0)}
+                Margin ${margin.toFixed(0)}
               </span>
             </div>
 
@@ -2584,7 +2597,7 @@ const InventorySystem = ({ onLogout }) => {
                             Spent
                           </p>
                           <p className="text-base font-bold leading-none text-[#2FB7A1]">
-                            ₦{spent >= 1000 ? `${(spent / 1000).toFixed(1)}k` : spent.toFixed(0)}
+                            ${spent >= 1000 ? `${(spent / 1000).toFixed(1)}k` : spent.toFixed(0)}
                           </p>
                         </div>
                         <div className="flex-1 px-3 py-2.5 text-center">
@@ -2695,7 +2708,7 @@ const InventorySystem = ({ onLogout }) => {
                   </div>
                   <div>
                     <p className={`text-[10px] font-semibold uppercase tracking-wide ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>Total Spent</p>
-                    <p className="text-lg font-bold mt-0.5 text-[#2FB7A1]">₦{totalSpentForCustomer.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+                    <p className="text-lg font-bold mt-0.5 text-[#2FB7A1]">${totalSpentForCustomer.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
                   </div>
                   {customerInfo?.phone && (
                     <div>
@@ -2857,12 +2870,12 @@ const InventorySystem = ({ onLogout }) => {
                             {product ? product.name : order.productId}
                           </p>
                           <p className={`text-xs mt-0.5 ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>
-                            Qty: {order.quantity} {product ? `· ₦${product.price}/unit` : ''}
+                            Qty: {order.quantity} {product ? `· $${product.price}/unit` : ''}
                           </p>
                         </div>
                         <div className="text-right flex-shrink-0">
                           <p className={`font-bold text-base ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>
-                            ₦{amountPaid.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                            ${amountPaid.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                           </p>
                           {order.paymentReference && (
                             <p className={`text-[10px] font-mono mt-0.5 ${darkMode ? 'text-gray-600' : 'text-[#CBD5E1]'}`}>
@@ -3126,7 +3139,7 @@ const InventorySystem = ({ onLogout }) => {
                               <span className={`px-1.5 py-0.5 rounded font-semibold ${
                                 darkMode ? 'bg-[#1f2937] text-gray-300' : 'bg-[#F3F4F6] text-[#374151]'
                               }`}>
-                                ₦{parseFloat(ship.shippingCost).toFixed(0)}
+                                ${parseFloat(ship.shippingCost).toFixed(0)}
                               </span>
                             )}
                             {ship.shippingCompany && (
@@ -3204,7 +3217,7 @@ const InventorySystem = ({ onLogout }) => {
                                 <div className="relative">
                                   <span className={`absolute left-2.5 top-1/2 -translate-y-1/2 text-xs pointer-events-none ${
                                     darkMode ? 'text-gray-500' : 'text-[#9CA3AF]'
-                                  }`}>₦</span>
+                                  }`}>$</span>
                                   <input
                                     type="number"
                                     step="0.01"
@@ -3320,8 +3333,11 @@ const InventorySystem = ({ onLogout }) => {
                               <button
                                 onClick={e => {
                                   e.stopPropagation();
+                                  const deliveryDate = prompt('Enter delivery date (DD-MMM-YYYY, e.g. 12-Mar-2026):', new Date().toLocaleDateString('en-GB', {day:'2-digit', month:'short', year:'numeric'}).replace(/ /g,'-'));
+                                  if (deliveryDate === null) return; // cancelled
+                                  if (!deliveryDate.trim()) { alert('Delivery date is required.'); return; }
                                   if (confirm('Mark as delivered? This will lock the order.')) {
-                                    handleUpdateShipping(ship.id, { status: 'shipped' });
+                                    handleUpdateShipping(ship.id, { status: 'shipped', deliveryDate: deliveryDate.trim() });
                                   }
                                 }}
                                 className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-md text-xs font-semibold text-white bg-[#2FB7A1] hover:bg-[#28a085] active:bg-[#239e7a] transition shadow-sm"
@@ -3428,7 +3444,7 @@ const InventorySystem = ({ onLogout }) => {
                 { label: 'Product',  value: selectedShipping.productId },
                 { label: 'Quantity', value: `${selectedShipping.quantity} units` },
                 selectedShipping.trackingNumber  && { label: 'Tracking',  value: selectedShipping.trackingNumber },
-                selectedShipping.shippingCost    && { label: 'Cost',      value: `₦${parseFloat(selectedShipping.shippingCost).toFixed(2)}` },
+                selectedShipping.shippingCost    && { label: 'Cost',      value: `$${parseFloat(selectedShipping.shippingCost).toFixed(2)}` },
                 selectedShipping.shippingCompany && { label: 'Carrier',   value: selectedShipping.shippingCompany },
                 selectedShipping.shippingDate    && { label: 'Ship Date', value: selectedShipping.shippingDate },
               ].filter(Boolean).map((item, i) => (
@@ -3514,7 +3530,7 @@ const InventorySystem = ({ onLogout }) => {
                         <div className={`space-y-0.5 text-[11px] ${darkMode ? 'text-gray-400' : 'text-[#6B7280]'}`}>
                           {entry.trackingNumber && <p className="font-mono">{entry.trackingNumber}</p>}
                           {entry.shippingCost && (
-                            <p>Cost: <span className="font-semibold">₦{parseFloat(entry.shippingCost).toFixed(2)}</span></p>
+                            <p>Cost: <span className="font-semibold">${parseFloat(entry.shippingCost).toFixed(2)}</span></p>
                           )}
                           {entry.notes && (
                             <p className={`pt-1 mt-1 border-t ${darkMode ? 'border-[#1f2937]' : 'border-[#E5E7EB]'}`}>
@@ -4054,7 +4070,7 @@ const InventorySystem = ({ onLogout }) => {
                                       {shipping.shippingCost && (
                                         <div>
                                           <p className="text-xs text-[#64748B] mb-1">Shipping Cost</p>
-                                          <p className="text-[#0F172A] dark:text-white">₦{parseFloat(shipping.shippingCost).toFixed(2)}</p>
+                                          <p className="text-[#0F172A] dark:text-white">${parseFloat(shipping.shippingCost).toFixed(2)}</p>
                                         </div>
                                       )}
                                     </div>
@@ -4121,7 +4137,7 @@ const InventorySystem = ({ onLogout }) => {
                       <div className="bg-white dark:bg-[#1A1A1A] rounded-xl shadow-sm border border-[#E3E8EF] dark:border-[#2A2A2A] p-6">
                         <p className="text-sm text-[#64748B] dark:text-gray-400 mb-2">Total Revenue</p>
                         <p className="text-2xl font-semibold text-[#0F172A] dark:text-white">
-                          ₦{customerReportData.reduce((sum, c) => sum + c.totalSpent, 0).toFixed(2)}
+                          ${customerReportData.reduce((sum, c) => sum + c.totalSpent, 0).toFixed(2)}
                         </p>
                       </div>
                       <div className="bg-white dark:bg-[#1A1A1A] rounded-xl shadow-sm border border-[#E3E8EF] dark:border-[#2A2A2A] p-6">
@@ -4133,7 +4149,7 @@ const InventorySystem = ({ onLogout }) => {
                       <div className="bg-white dark:bg-[#1A1A1A] rounded-xl shadow-sm border border-[#E3E8EF] dark:border-[#2A2A2A] p-6">
                         <p className="text-sm text-[#64748B] dark:text-gray-400 mb-2">Average Order Value</p>
                         <p className="text-2xl font-semibold text-[#0F172A] dark:text-white">
-                          ₦{customerReportData.length > 0 ? (customerReportData.reduce((sum, c) => sum + c.totalSpent, 0) / customerReportData.reduce((sum, c) => sum + c.totalOrders, 1)).toFixed(2) : '0.00'}
+                          ${customerReportData.length > 0 ? (customerReportData.reduce((sum, c) => sum + c.totalSpent, 0) / customerReportData.reduce((sum, c) => sum + c.totalOrders, 1)).toFixed(2) : '0.00'}
                         </p>
                       </div>
                     </div>
@@ -4261,19 +4277,19 @@ const InventorySystem = ({ onLogout }) => {
                               <div className="bg-[#F9FAFB] dark:bg-[#2A2A2A] rounded-lg p-4 border border-[#E3E8EF] dark:border-[#2A2A2A]">
                                 <p className="text-xs text-[#64748B] dark:text-gray-400 mb-1">Total Revenue</p>
                                 <p className="text-xl font-semibold text-[#0F172A] dark:text-white">
-                                  ₦{customerPurchases.summary?.totalRevenue?.toFixed(2) || '0.00'}
+                                  ${customerPurchases.summary?.totalRevenue?.toFixed(2) || '0.00'}
                                 </p>
                               </div>
                               <div className="bg-[#F9FAFB] dark:bg-[#2A2A2A] rounded-lg p-4 border border-[#E3E8EF] dark:border-[#2A2A2A]">
                                 <p className="text-xs text-[#64748B] dark:text-gray-400 mb-1">Total Cost (FIFO)</p>
                                 <p className="text-xl font-semibold text-[#0F172A] dark:text-white">
-                                  ₦{customerPurchases.summary?.totalCost?.toFixed(2) || customerPurchases.summary?.totalCostFifo?.toFixed(2) || '0.00'}
+                                  ${customerPurchases.summary?.totalCost?.toFixed(2) || customerPurchases.summary?.totalCostFifo?.toFixed(2) || '0.00'}
                                 </p>
                               </div>
                               <div className="bg-[#F9FAFB] dark:bg-[#2A2A2A] rounded-lg p-4 border border-[#E3E8EF] dark:border-[#2A2A2A]">
                                 <p className="text-xs text-[#64748B] dark:text-gray-400 mb-1">Total Profit</p>
                                 <p className={`text-xl font-semibold ${(customerPurchases.summary?.totalProfit || 0) >= 0 ? 'text-[#16A34A]' : 'text-[#DC2626]'}`}>
-                                  ₦{customerPurchases.summary?.totalProfit?.toFixed(2) || '0.00'}
+                                  ${customerPurchases.summary?.totalProfit?.toFixed(2) || '0.00'}
                                 </p>
                               </div>
                               <div className="bg-[#F9FAFB] dark:bg-[#2A2A2A] rounded-lg p-4 border border-[#E3E8EF] dark:border-[#2A2A2A]">
@@ -4313,11 +4329,11 @@ const InventorySystem = ({ onLogout }) => {
                                         <td className="px-4 py-3 text-[#0F172A] dark:text-white font-medium">{purchase.productName || purchase.product?.name || '—'}</td>
                                         <td className="px-4 py-3 text-[#64748B] dark:text-gray-400 font-mono text-xs">{purchase.batchId || purchase.batch?.id || '—'}</td>
                                         <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">{purchase.quantitySold || purchase.quantity || 0}</td>
-                                        <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">₦{(purchase.costPriceUsed || purchase.costPriceFifo || purchase.costPrice || 0).toFixed(2)}</td>
-                                        <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">₦{(purchase.sellingPriceUsed || purchase.sellingPrice || 0).toFixed(2)}</td>
-                                        <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">₦{(purchase.revenue || 0).toFixed(2)}</td>
+                                        <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">${(purchase.costPriceUsed || purchase.costPriceFifo || purchase.costPrice || 0).toFixed(2)}</td>
+                                        <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">${(purchase.sellingPriceUsed || purchase.sellingPrice || 0).toFixed(2)}</td>
+                                        <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">${(purchase.revenue || 0).toFixed(2)}</td>
                                         <td className={`px-4 py-3 text-right font-semibold ${(purchase.profit || 0) >= 0 ? 'text-[#16A34A]' : 'text-[#DC2626]'}`}>
-                                          ₦{(purchase.profit || 0).toFixed(2)}
+                                          ${(purchase.profit || 0).toFixed(2)}
                                         </td>
                                       </tr>
                                     ))
@@ -4334,10 +4350,10 @@ const InventorySystem = ({ onLogout }) => {
                                     <tr className="bg-[#F9FAFB] dark:bg-[#2A2A2A] font-bold border-t-2 border-[#E5E7EB] dark:border-[#2A2A2A]">
                                       <td colSpan="6" className="px-4 py-3 text-[#0F172A] dark:text-white">Grand Total</td>
                                       <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">
-                                        ₦{customerPurchases.summary?.totalRevenue?.toFixed(2) || '0.00'}
+                                        ${customerPurchases.summary?.totalRevenue?.toFixed(2) || '0.00'}
                                       </td>
                                       <td className={`px-4 py-3 text-right ${(customerPurchases.summary?.totalProfit || 0) >= 0 ? 'text-[#16A34A]' : 'text-[#DC2626]'}`}>
-                                        ₦{customerPurchases.summary?.totalProfit?.toFixed(2) || '0.00'}
+                                        ${customerPurchases.summary?.totalProfit?.toFixed(2) || '0.00'}
                                       </td>
                                     </tr>
                                   </tfoot>
@@ -4394,9 +4410,9 @@ const InventorySystem = ({ onLogout }) => {
                                     <td className="px-4 py-3 text-[#0F172A] dark:text-white font-medium font-bold">{row.name}</td>
                                     <td className="px-4 py-3 text-center text-[#0F172A] dark:text-white">{row.totalOrders}</td>
                                     <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">{row.totalQuantity}</td>
-                                    <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white font-semibold">₦{row.totalSpent.toFixed(2)}</td>
+                                    <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white font-semibold">${row.totalSpent.toFixed(2)}</td>
                                     <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">
-                                      ₦{row.totalOrders > 0 ? (row.totalSpent / row.totalOrders).toFixed(2) : '0.00'}
+                                      ${row.totalOrders > 0 ? (row.totalSpent / row.totalOrders).toFixed(2) : '0.00'}
                                     </td>
                                     <td className="px-4 py-3 text-right text-[#64748B] dark:text-gray-400">
                                       {row.lastOrderDate || '—'}
@@ -4439,7 +4455,7 @@ const InventorySystem = ({ onLogout }) => {
                         <div className="bg-white dark:bg-[#1A1A1A] rounded-xl shadow-sm border border-[#E3E8EF] dark:border-[#2A2A2A] p-6">
                           <p className="text-sm text-[#64748B] dark:text-gray-400 mb-2">Total Inventory Value</p>
                           <p className="text-2xl font-semibold text-[#0F172A] dark:text-white">
-                            ₦{inventoryReportData.summary?.totalInventoryValue?.toFixed(2) || '0.00'}
+                            ${inventoryReportData.summary?.totalInventoryValue?.toFixed(2) || '0.00'}
                           </p>
                         </div>
                         <div className="bg-white dark:bg-[#1A1A1A] rounded-xl shadow-sm border border-[#E3E8EF] dark:border-[#2A2A2A] p-6">
@@ -4518,15 +4534,15 @@ const InventorySystem = ({ onLogout }) => {
                                     <td className="px-4 py-3 text-[#0F172A] dark:text-white font-medium">{batch.productName}</td>
                                     <td className="px-4 py-3 text-[#64748B] dark:text-gray-400 font-mono text-xs">{batch.batchId}</td>
                                     <td className="px-4 py-3 text-[#64748B] dark:text-gray-400">{batch.dateAdded || '—'}</td>
-                                    <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">₦{batch.costPrice?.toFixed(2) || '0.00'}</td>
-                                    <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">₦{batch.sellingPrice?.toFixed(2) || '0.00'}</td>
+                                    <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">${batch.costPrice?.toFixed(2) || '0.00'}</td>
+                                    <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">${batch.sellingPrice?.toFixed(2) || '0.00'}</td>
                                     <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">{batch.quantityAdded || 0}</td>
                                     <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">{batch.quantitySold || 0}</td>
                                     <td className={`px-4 py-3 text-right font-semibold ${batch.isLowStock ? 'text-[#DC2626]' : 'text-[#0F172A] dark:text-white'}`}>
                                       {batch.quantityRemaining || 0}
                                       {batch.isLowStock && <span className="ml-2 text-xs">⚠️</span>}
                                     </td>
-                                    <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white font-semibold">₦{batch.inventoryValue?.toFixed(2) || '0.00'}</td>
+                                    <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white font-semibold">${batch.inventoryValue?.toFixed(2) || '0.00'}</td>
                                     <td className="px-4 py-3 text-[#64748B] dark:text-gray-400">{batch.supplier || '—'}</td>
                                   </tr>
                                 ))
@@ -4543,7 +4559,7 @@ const InventorySystem = ({ onLogout }) => {
                                 <tr className="bg-[#F9FAFB] dark:bg-[#2A2A2A] font-bold border-t-2 border-[#E5E7EB] dark:border-[#2A2A2A]">
                                   <td colSpan="8" className="px-4 py-3 text-[#0F172A] dark:text-white">Grand Total</td>
                                   <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">
-                                    ₦{inventoryReportData.summary?.totalInventoryValue?.toFixed(2) || '0.00'}
+                                    ${inventoryReportData.summary?.totalInventoryValue?.toFixed(2) || '0.00'}
                                   </td>
                                   <td></td>
                                 </tr>
@@ -4567,10 +4583,10 @@ const InventorySystem = ({ onLogout }) => {
     {salesReportData && (
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
         {[
-          { label: 'Total Revenue', value: `₦${salesReportData.summary?.totalRevenue?.toFixed(2) || '0.00'}`, color: 'text-[#0F172A] dark:text-white' },
-          { label: 'Total COGS (FIFO)', value: `₦${salesReportData.summary?.totalCost?.toFixed(2) || '0.00'}`, color: 'text-[#0F172A] dark:text-white' },
-          { label: 'Gross Profit', value: `₦${salesReportData.summary?.totalProfit?.toFixed(2) || '0.00'}`, color: (salesReportData.summary?.totalProfit || 0) >= 0 ? 'text-[#16A34A]' : 'text-[#DC2626]' },
-          { label: 'Net Profit', value: `₦${salesReportData.summary?.totalProfit?.toFixed(2) || '0.00'}`, color: (salesReportData.summary?.totalProfit || 0) >= 0 ? 'text-[#16A34A]' : 'text-[#DC2626]' },
+          { label: 'Total Revenue', value: `$${salesReportData.summary?.totalRevenue?.toFixed(2) || '0.00'}`, color: 'text-[#0F172A] dark:text-white' },
+          { label: 'Total COGS (FIFO)', value: `$${salesReportData.summary?.totalCost?.toFixed(2) || '0.00'}`, color: 'text-[#0F172A] dark:text-white' },
+          { label: 'Gross Profit', value: `$${salesReportData.summary?.totalProfit?.toFixed(2) || '0.00'}`, color: (salesReportData.summary?.totalProfit || 0) >= 0 ? 'text-[#16A34A]' : 'text-[#DC2626]' },
+          { label: 'Net Profit', value: `$${salesReportData.summary?.totalProfit?.toFixed(2) || '0.00'}`, color: (salesReportData.summary?.totalProfit || 0) >= 0 ? 'text-[#16A34A]' : 'text-[#DC2626]' },
           { label: 'Units Sold', value: salesReportData.summary?.unitsSold || 0, color: 'text-[#0F172A] dark:text-white', fullWidth: true },
         ].map((card, i) => (
           <div key={i} className={`bg-white dark:bg-[#1A1A1A] rounded-xl shadow-sm border border-[#E3E8EF] dark:border-[#2A2A2A] p-4 ${card.fullWidth ? 'col-span-2 md:col-span-1' : ''}`}>
@@ -4655,9 +4671,9 @@ const InventorySystem = ({ onLogout }) => {
                         if (expandedProductId !== product.product.id) product.batches?.forEach(b => b.batch?.id && fetchPriceHistory(b.batch.id));
                       }}>{product.product.name}</td>
                       <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">{product.totalSold || 0}</td>
-                      <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">₦{product.totalRevenue?.toFixed(2) || '0.00'}</td>
-                      <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">₦{product.totalCost?.toFixed(2) || '0.00'}</td>
-                      <td className={`px-4 py-3 text-right font-semibold ${(product.totalProfit || 0) >= 0 ? 'text-[#16A34A]' : 'text-[#DC2626]'}`}>₦{product.totalProfit?.toFixed(2) || '0.00'}</td>
+                      <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">${product.totalRevenue?.toFixed(2) || '0.00'}</td>
+                      <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">${product.totalCost?.toFixed(2) || '0.00'}</td>
+                      <td className={`px-4 py-3 text-right font-semibold ${(product.totalProfit || 0) >= 0 ? 'text-[#16A34A]' : 'text-[#DC2626]'}`}>${product.totalProfit?.toFixed(2) || '0.00'}</td>
                       <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">{margin.toFixed(1)}%</td>
                       <td className="px-4 py-3 text-right">
                         <button onClick={() => { setExpandedProductId(expandedProductId === product.product.id ? null : product.product.id); if (expandedProductId !== product.product.id) product.batches?.forEach(b => b.batch?.id && fetchPriceHistory(b.batch.id)); }} className="text-[#2FB7A1] hover:underline text-xs">
@@ -4702,13 +4718,13 @@ const InventorySystem = ({ onLogout }) => {
                                                 </div>
                                               </td>
                                               <td className="px-3 py-2 text-[#64748B] dark:text-gray-400">{batch?.dateAdded || '—'}</td>
-                                              <td className="px-3 py-2 text-right text-[#0F172A] dark:text-white">₦{batch?.costPrice?.toFixed(2) || '0.00'}</td>
-                                              <td className="px-3 py-2 text-right text-[#0F172A] dark:text-white">₦{batch?.sellingPrice?.toFixed(2) || '0.00'}</td>
+                                              <td className="px-3 py-2 text-right text-[#0F172A] dark:text-white">${batch?.costPrice?.toFixed(2) || '0.00'}</td>
+                                              <td className="px-3 py-2 text-right text-[#0F172A] dark:text-white">${batch?.sellingPrice?.toFixed(2) || '0.00'}</td>
                                               <td className="px-3 py-2 text-right text-[#0F172A] dark:text-white">{batchData.totalSold || 0}</td>
-                                              <td className="px-3 py-2 text-right text-[#0F172A] dark:text-white">₦{batchData.totalRevenue?.toFixed(2) || '0.00'}</td>
-                                              <td className="px-3 py-2 text-right text-[#0F172A] dark:text-white">₦{batchData.totalCost?.toFixed(2) || '0.00'}</td>
+                                              <td className="px-3 py-2 text-right text-[#0F172A] dark:text-white">${batchData.totalRevenue?.toFixed(2) || '0.00'}</td>
+                                              <td className="px-3 py-2 text-right text-[#0F172A] dark:text-white">${batchData.totalCost?.toFixed(2) || '0.00'}</td>
                                               <td className={`px-3 py-2 text-right font-semibold ${(batchData.totalProfit || 0) >= 0 ? 'text-[#16A34A]' : 'text-[#DC2626]'}`}>
-                                                ₦{batchData.totalProfit?.toFixed(2) || '0.00'}
+                                                ${batchData.totalProfit?.toFixed(2) || '0.00'}
                                                 <span className="block text-[10px] font-normal text-[#94A3B8]">excl. pending shipping</span>
                                               </td>
                                             </tr>
@@ -4749,7 +4765,7 @@ const InventorySystem = ({ onLogout }) => {
                                                                 <td className="px-2 py-2 text-[#0F172A] dark:text-white font-medium">{txn.customerName}</td>
                                                                 <td className="px-2 py-2 text-[#64748B] dark:text-gray-400">{txn.dateCreated || '—'}</td>
                                                                 <td className="px-2 py-2 text-right text-[#0F172A] dark:text-white">{txn.quantity}</td>
-                                                                <td className="px-2 py-2 text-right font-semibold text-[#0F172A] dark:text-white">₦{paid.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                                                                <td className="px-2 py-2 text-right font-semibold text-[#0F172A] dark:text-white">${paid.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
                                                                 <td className="px-2 py-2 text-[#64748B] dark:text-gray-400 capitalize">{txn.paymentMethod || '—'}</td>
                                                                 <td className="px-2 py-2 text-center">
                                                                   <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${ship.status === 'shipped' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' : ship.status === 'transit' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'}`}>
@@ -4764,7 +4780,7 @@ const InventorySystem = ({ onLogout }) => {
                                                           <tr className={`font-bold border-t-2 ${darkMode ? 'border-[#1f2937]' : 'border-[#E3E8EF]'}`}>
                                                             <td colSpan="4" className="px-2 py-2 text-[#0F172A] dark:text-white">Total</td>
                                                             <td className="px-2 py-2 text-right text-[#0F172A] dark:text-white">
-                                                              ₦{batchTransactions.reduce((sum, txn) => {
+                                                              ${batchTransactions.reduce((sum, txn) => {
                                                                 const prod = inventory.find(p => p.id === txn.productId);
                                                                 const base = prod ? (prod.price || 0) * (txn.quantity || 0) : 0;
                                                                 return sum + (txn.amountPaid != null ? txn.amountPaid : base);
@@ -4795,9 +4811,9 @@ const InventorySystem = ({ onLogout }) => {
                               <h4 className="font-semibold text-[#0F172A] dark:text-white mb-4">Profit & Loss Overview</h4>
                               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                 {[
-                                  { label: 'Total Revenue', value: `₦${product.totalRevenue?.toFixed(2) || '0.00'}`, color: '' },
-                                  { label: 'Total COGS (FIFO)', value: `₦${product.totalCost?.toFixed(2) || '0.00'}`, color: '' },
-                                  { label: 'Gross Profit', value: `₦${product.totalProfit?.toFixed(2) || '0.00'}`, color: (product.totalProfit || 0) >= 0 ? 'text-[#16A34A]' : 'text-[#DC2626]' },
+                                  { label: 'Total Revenue', value: `$${product.totalRevenue?.toFixed(2) || '0.00'}`, color: '' },
+                                  { label: 'Total COGS (FIFO)', value: `$${product.totalCost?.toFixed(2) || '0.00'}`, color: '' },
+                                  { label: 'Gross Profit', value: `$${product.totalProfit?.toFixed(2) || '0.00'}`, color: (product.totalProfit || 0) >= 0 ? 'text-[#16A34A]' : 'text-[#DC2626]' },
                                   { label: 'Margin', value: `${margin.toFixed(1)}%`, color: margin >= 0 ? 'text-[#16A34A]' : 'text-[#DC2626]' },
                                 ].map((item, i) => (
                                   <div key={i}>
@@ -4819,9 +4835,9 @@ const InventorySystem = ({ onLogout }) => {
               <tr className="bg-[#F9FAFB] dark:bg-[#2A2A2A] font-bold">
                 <td className="px-4 py-3 text-[#0F172A] dark:text-white">Grand Total</td>
                 <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">{salesReportData.summary?.unitsSold || 0}</td>
-                <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">₦{salesReportData.summary?.totalRevenue?.toFixed(2) || '0.00'}</td>
-                <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">₦{salesReportData.summary?.totalCost?.toFixed(2) || '0.00'}</td>
-                <td className={`px-4 py-3 text-right ${(salesReportData.summary?.totalProfit || 0) >= 0 ? 'text-[#16A34A]' : 'text-[#DC2626]'}`}>₦{salesReportData.summary?.totalProfit?.toFixed(2) || '0.00'}</td>
+                <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">${salesReportData.summary?.totalRevenue?.toFixed(2) || '0.00'}</td>
+                <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">${salesReportData.summary?.totalCost?.toFixed(2) || '0.00'}</td>
+                <td className={`px-4 py-3 text-right ${(salesReportData.summary?.totalProfit || 0) >= 0 ? 'text-[#16A34A]' : 'text-[#DC2626]'}`}>${salesReportData.summary?.totalProfit?.toFixed(2) || '0.00'}</td>
                 <td colSpan="2"></td>
               </tr>
             </tfoot>
@@ -4855,9 +4871,9 @@ const InventorySystem = ({ onLogout }) => {
                   <div className="grid grid-cols-2 gap-2">
                     {[
                       { label: 'Units Sold', value: product.totalSold || 0, color: '' },
-                      { label: 'Revenue', value: `₦${product.totalRevenue?.toFixed(2) || '0.00'}`, color: '' },
-                      { label: 'COGS', value: `₦${product.totalCost?.toFixed(2) || '0.00'}`, color: '' },
-                      { label: 'Profit', value: `₦${product.totalProfit?.toFixed(2) || '0.00'}`, color: (product.totalProfit || 0) >= 0 ? 'text-[#16A34A]' : 'text-[#DC2626]' },
+                      { label: 'Revenue', value: `$${product.totalRevenue?.toFixed(2) || '0.00'}`, color: '' },
+                      { label: 'COGS', value: `$${product.totalCost?.toFixed(2) || '0.00'}`, color: '' },
+                      { label: 'Profit', value: `$${product.totalProfit?.toFixed(2) || '0.00'}`, color: (product.totalProfit || 0) >= 0 ? 'text-[#16A34A]' : 'text-[#DC2626]' },
                     ].map((stat, i) => (
                       <div key={i} className={`rounded-lg p-2.5 ${darkMode ? 'bg-[#111827]' : 'bg-[#F8FAFC]'}`}>
                         <p className={`text-[10px] font-medium uppercase tracking-wide mb-0.5 ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>{stat.label}</p>
@@ -4887,7 +4903,7 @@ const InventorySystem = ({ onLogout }) => {
                               </div>
                               <div className="flex items-center gap-2 flex-shrink-0">
                                 <span className={`text-xs font-bold ${(batchData.totalProfit || 0) >= 0 ? 'text-[#16A34A]' : 'text-[#DC2626]'}`}>
-                                  ₦{batchData.totalProfit?.toFixed(0) || '0'}
+                                  ${batchData.totalProfit?.toFixed(0) || '0'}
                                 </span>
                                 <ChevronRight size={13} className={`transition-transform text-[#2FB7A1] ${isBatchExpanded ? 'rotate-90' : ''}`} />
                               </div>
@@ -4896,9 +4912,9 @@ const InventorySystem = ({ onLogout }) => {
                             {/* Batch stats row */}
                             <div className={`grid grid-cols-3 divide-x border-t ${darkMode ? 'divide-[#1f2937] border-[#1f2937] bg-[#0d1117]' : 'divide-[#F1F5F9] border-[#F1F5F9] bg-[#F8FAFC]'}`}>
                               {[
-                                { label: 'Revenue', value: `₦${batchData.totalRevenue?.toFixed(0) || '0'}` },
-                                { label: 'Cost', value: `₦${batchData.totalCost?.toFixed(0) || '0'}` },
-                                { label: 'Profit', value: `₦${batchData.totalProfit?.toFixed(0) || '0'}`, profit: (batchData.totalProfit || 0) >= 0 },
+                                { label: 'Revenue', value: `$${batchData.totalRevenue?.toFixed(0) || '0'}` },
+                                { label: 'Cost', value: `$${batchData.totalCost?.toFixed(0) || '0'}` },
+                                { label: 'Profit', value: `$${batchData.totalProfit?.toFixed(0) || '0'}`, profit: (batchData.totalProfit || 0) >= 0 },
                               ].map((s, i) => (
                                 <div key={i} className="text-center py-2">
                                   <p className={`text-[9px] font-semibold uppercase tracking-wide ${darkMode ? 'text-gray-600' : 'text-[#94A3B8]'}`}>{s.label}</p>
@@ -4937,7 +4953,7 @@ const InventorySystem = ({ onLogout }) => {
                                           </div>
                                           <div className="flex justify-between mt-1.5">
                                             <span className={`text-[10px] ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>Qty: {txn.quantity} · {txn.paymentMethod || '—'}</span>
-                                            <span className={`text-xs font-bold ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>₦{paid.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                                            <span className={`text-xs font-bold ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>${paid.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
                                           </div>
                                         </div>
                                       );
@@ -4946,7 +4962,7 @@ const InventorySystem = ({ onLogout }) => {
                                     <div className={`flex justify-between pt-2 border-t ${darkMode ? 'border-[#1f2937]' : 'border-[#E3E8EF]'}`}>
                                       <span className={`text-xs font-semibold ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>Total ({batchTransactions.length})</span>
                                       <span className={`text-xs font-bold ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>
-                                        ₦{batchTransactions.reduce((sum, txn) => {
+                                        ${batchTransactions.reduce((sum, txn) => {
                                           const prod = inventory.find(p => p.id === txn.productId);
                                           const base = prod ? (prod.price || 0) * (txn.quantity || 0) : 0;
                                           return sum + (txn.amountPaid != null ? txn.amountPaid : base);
@@ -4969,9 +4985,9 @@ const InventorySystem = ({ onLogout }) => {
                       <p className={`text-[10px] font-bold uppercase tracking-widest mb-2 ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>P&L Summary</p>
                       <div className="grid grid-cols-2 gap-2">
                         {[
-                          { label: 'Revenue', value: `₦${product.totalRevenue?.toFixed(2) || '0.00'}`, color: '' },
-                          { label: 'COGS', value: `₦${product.totalCost?.toFixed(2) || '0.00'}`, color: '' },
-                          { label: 'Profit', value: `₦${product.totalProfit?.toFixed(2) || '0.00'}`, color: (product.totalProfit || 0) >= 0 ? 'text-[#16A34A]' : 'text-[#DC2626]' },
+                          { label: 'Revenue', value: `$${product.totalRevenue?.toFixed(2) || '0.00'}`, color: '' },
+                          { label: 'COGS', value: `$${product.totalCost?.toFixed(2) || '0.00'}`, color: '' },
+                          { label: 'Profit', value: `$${product.totalProfit?.toFixed(2) || '0.00'}`, color: (product.totalProfit || 0) >= 0 ? 'text-[#16A34A]' : 'text-[#DC2626]' },
                           { label: 'Margin', value: `${margin.toFixed(1)}%`, color: margin >= 0 ? 'text-[#16A34A]' : 'text-[#DC2626]' },
                         ].map((s, i) => (
                           <div key={i}>
@@ -4993,9 +5009,9 @@ const InventorySystem = ({ onLogout }) => {
             <div className="grid grid-cols-2 gap-2">
               {[
                 { label: 'Units Sold', value: salesReportData.summary?.unitsSold || 0, color: '' },
-                { label: 'Revenue', value: `₦${salesReportData.summary?.totalRevenue?.toFixed(2) || '0.00'}`, color: '' },
-                { label: 'COGS', value: `₦${salesReportData.summary?.totalCost?.toFixed(2) || '0.00'}`, color: '' },
-                { label: 'Profit', value: `₦${salesReportData.summary?.totalProfit?.toFixed(2) || '0.00'}`, color: (salesReportData.summary?.totalProfit || 0) >= 0 ? 'text-[#16A34A]' : 'text-[#DC2626]' },
+                { label: 'Revenue', value: `$${salesReportData.summary?.totalRevenue?.toFixed(2) || '0.00'}`, color: '' },
+                { label: 'COGS', value: `$${salesReportData.summary?.totalCost?.toFixed(2) || '0.00'}`, color: '' },
+                { label: 'Profit', value: `$${salesReportData.summary?.totalProfit?.toFixed(2) || '0.00'}`, color: (salesReportData.summary?.totalProfit || 0) >= 0 ? 'text-[#16A34A]' : 'text-[#DC2626]' },
               ].map((s, i) => (
                 <div key={i} className={`rounded-lg p-2.5 ${darkMode ? 'bg-[#1A1A1A]' : 'bg-white border border-[#E3E8EF]'}`}>
                   <p className={`text-[10px] font-medium uppercase tracking-wide mb-0.5 ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>{s.label}</p>
@@ -5022,19 +5038,19 @@ const InventorySystem = ({ onLogout }) => {
                       <div className="bg-white dark:bg-[#1A1A1A] rounded-xl shadow-sm border border-[#E3E8EF] dark:border-[#2A2A2A] p-6">
                         <p className="text-sm text-[#64748B] dark:text-gray-400 mb-2">Total Revenue</p>
                         <p className="text-2xl font-semibold text-[#0F172A] dark:text-white">
-                          ₦{(salesReportData?.summary?.totalRevenue ?? statsData.totalRevenue).toFixed(2)}
+                          ${(salesReportData?.summary?.totalRevenue ?? statsData.totalRevenue).toFixed(2)}
                         </p>
                       </div>
                       <div className="bg-white dark:bg-[#1A1A1A] rounded-xl shadow-sm border border-[#E3E8EF] dark:border-[#2A2A2A] p-6">
                         <p className="text-sm text-[#64748B] dark:text-gray-400 mb-2">Total COGS (FIFO)</p>
                         <p className="text-2xl font-semibold text-[#0F172A] dark:text-white">
-                          ₦{(salesReportData?.summary?.totalCost ?? inventory.reduce((sum, item) => sum + (item.sold * item.cost), 0)).toFixed(2)}
+                          ${(salesReportData?.summary?.totalCost ?? inventory.reduce((sum, item) => sum + (item.sold * item.cost), 0)).toFixed(2)}
                         </p>
                       </div>
                       <div className="bg-white dark:bg-[#1A1A1A] rounded-xl shadow-sm border border-[#E3E8EF] dark:border-[#2A2A2A] p-6">
                         <p className="text-sm text-[#64748B] dark:text-gray-400 mb-2">Gross Profit (FIFO)</p>
                         <p className={`text-2xl font-semibold ${(salesReportData?.summary?.totalProfit ?? statsData.profit) >= 0 ? 'text-[#16A34A]' : 'text-[#DC2626]'}`}>
-                          ₦{(salesReportData?.summary?.totalProfit ?? statsData.profit).toFixed(2)}
+                          ${(salesReportData?.summary?.totalProfit ?? statsData.profit).toFixed(2)}
                         </p>
                         <p className="text-xs text-[#94A3B8] mt-1">
                           ⚠ Excludes unconfirmed shipping costs
@@ -5043,7 +5059,7 @@ const InventorySystem = ({ onLogout }) => {
                       <div className="bg-white dark:bg-[#1A1A1A] rounded-xl shadow-sm border border-[#E3E8EF] dark:border-[#2A2A2A] p-6">
                         <p className="text-sm text-[#64748B] dark:text-gray-400 mb-2">Net Profit (FIFO)</p>
                         <p className={`text-2xl font-semibold ${(salesReportData?.summary?.totalProfit ?? statsData.profit) >= 0 ? 'text-[#16A34A]' : 'text-[#DC2626]'}`}>
-                          ₦{(salesReportData?.summary?.totalProfit ?? statsData.profit).toFixed(2)}
+                          ${(salesReportData?.summary?.totalProfit ?? statsData.profit).toFixed(2)}
                         </p>
                       </div>
                     </div>
@@ -5071,10 +5087,10 @@ const InventorySystem = ({ onLogout }) => {
                           return (
                             <tr key={item.id} className="border-b border-[#F1F5F9] dark:border-[#2A2A2A] hover:bg-[#F9FAFB] dark:hover:bg-[#2A2A2A]">
                               <td className="px-4 py-3 text-[#0F172A] dark:text-white font-medium">{item.name}</td>
-                              <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">₦{revenue.toFixed(2)}</td>
-                              <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">₦{cogs.toFixed(2)}</td>
+                              <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">${revenue.toFixed(2)}</td>
+                              <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">${cogs.toFixed(2)}</td>
                               <td className={`px-4 py-3 text-right font-semibold ${profit >= 0 ? 'text-[#16A34A]' : 'text-[#DC2626]'}`}>
-                                ₦{profit.toFixed(2)}
+                                ${profit.toFixed(2)}
                               </td>
                             </tr>
                           );
@@ -5084,13 +5100,13 @@ const InventorySystem = ({ onLogout }) => {
                             <tr className="bg-[#F9FAFB] dark:bg-[#2A2A2A] font-bold">
                               <td className="px-4 py-3 text-[#0F172A] dark:text-white">Grand Total</td>
                               <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">
-                                ₦{(salesReportData?.summary?.totalRevenue ?? statsData.totalRevenue).toFixed(2)}
+                                ${(salesReportData?.summary?.totalRevenue ?? statsData.totalRevenue).toFixed(2)}
                               </td>
                               <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">
-                                ₦{(salesReportData?.summary?.totalCost ?? inventory.reduce((sum, item) => sum + (item.sold * item.cost), 0)).toFixed(2)}
+                                ${(salesReportData?.summary?.totalCost ?? inventory.reduce((sum, item) => sum + (item.sold * item.cost), 0)).toFixed(2)}
                               </td>
                               <td className={`px-4 py-3 text-right ${(salesReportData?.summary?.totalProfit ?? statsData.profit) >= 0 ? 'text-[#16A34A]' : 'text-[#DC2626]'}`}>
-                                ₦{(salesReportData?.summary?.totalProfit ?? statsData.profit).toFixed(2)}
+                                ${(salesReportData?.summary?.totalProfit ?? statsData.profit).toFixed(2)}
                               </td>
                             </tr>
                           </tfoot>
@@ -5190,10 +5206,10 @@ const InventorySystem = ({ onLogout }) => {
                                     {change.changeType}
                                   </td>
                                   <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">
-                                    ₦{Number(change.oldPrice).toFixed(2)}
+                                    ${Number(change.oldPrice).toFixed(2)}
                                   </td>
                                   <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">
-                                    ₦{Number(change.newPrice).toFixed(2)}
+                                    ${Number(change.newPrice).toFixed(2)}
                                   </td>
                                   <td className="px-4 py-3 text-[#0F172A] dark:text-white">
                                     {change.dateChanged
@@ -5308,17 +5324,17 @@ const InventorySystem = ({ onLogout }) => {
               return;
             }
             data.quantity = hiddenQtyEl.value;
-            const totalAmountPaid = parseFloat(formData.get('totalAmountPaid'));
+            const totalAmountPaid = parseCommaNumber(formData.get('totalAmountPaid'));
             if (Number.isNaN(totalAmountPaid) || totalAmountPaid < 0) {
               showToast('Please enter a valid total amount paid.');
               return;
             }
-            const cost = parseFloat(data.cost);
+            const cost = parseCommaNumber(data.cost);
             if (!data.cost || Number.isNaN(cost) || cost < 0) {
               showToast('Cost per unit could not be calculated. Please check quantity and total amount paid.');
               return;
             }
-            const price = parseFloat(data.price);
+            const price = parseCommaNumber(data.price);
             if (!data.price || Number.isNaN(price) || price < 0) {
               showToast('Please enter a valid selling price.');
               return;
@@ -5337,8 +5353,8 @@ const InventorySystem = ({ onLogout }) => {
             const profitPerUnitDisplay = form.querySelector('#profit-per-unit-display');
             const totalProfitDisplay = form.querySelector('#total-profit-display');
 
-            const totalAmountPaid = parseFloat(totalAmountPaidInput?.value) || 0;
-            const shipping = parseFloat(shippingInput?.value) || 0;
+            const totalAmountPaid = parseFloat((totalAmountPaidInput?.value || '').replace(/,/g,'')) || 0;
+            const shipping = parseFloat((shippingInput?.value || '').replace(/,/g,'')) || 0;
             const quantity = parseFloat(quantityInput?.value) || 0;
 
             // Total Cost = Amount Paid + Delivery Cost
@@ -5747,20 +5763,19 @@ const InventorySystem = ({ onLogout }) => {
         Total Amount Paid <span className="text-red-500">*</span>
       </label>
       <div className="relative">
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400">₦</span>
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400">$</span>
         <input
           name="totalAmountPaid"
-          id="total-amount-paid-input"
-          type="number"
-          step="0.01"
-          min="0"
+          id="total-amount-paid-input-mobile"
+          type="text"
+          inputMode="decimal"
           placeholder="0.00"
-          className={`w-full pl-8 pr-3 py-3 border rounded-lg transition-all text-sm ${
+          onInput={(e) => { e.target.value = formatWithCommas(e.target.value); e.target.form?.dispatchEvent(new Event('input', { bubbles: true })); }}
+          className={`w-full pl-8 pr-4 py-3 border rounded-lg transition-all ${
             darkMode
               ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white placeholder-gray-400 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
               : 'bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
           }`}
-          required
         />
       </div>
     </div>
@@ -5771,15 +5786,15 @@ const InventorySystem = ({ onLogout }) => {
         Delivery Cost
       </label>
       <div className="relative">
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400">₦</span>
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400">$</span>
         <input
           name="shippingCost"
-          id="shipping-input"
-          type="number"
-          step="0.01"
-          min="0"
+          id="shipping-input-tablet"
+          type="text"
+          inputMode="decimal"
           placeholder="0.00"
           defaultValue="0"
+          onInput={(e) => { e.target.value = formatWithCommas(e.target.value); e.target.form?.dispatchEvent(new Event('input', { bubbles: true })); }}
           className={`w-full pl-8 pr-3 py-3 border rounded-lg transition-all text-sm ${
             darkMode
               ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white placeholder-gray-400 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
@@ -5795,7 +5810,7 @@ const InventorySystem = ({ onLogout }) => {
         Total Cost <span className="text-xs font-normal text-gray-400">(auto)</span>
       </label>
       <div className="relative">
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400">₦</span>
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400">$</span>
         <input
           id="total-cost-display"
           type="text"
@@ -5816,7 +5831,7 @@ const InventorySystem = ({ onLogout }) => {
         Cost / Unit <span className="text-xs font-normal text-gray-400">(auto)</span>
       </label>
       <div className="relative">
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400">₦</span>
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400">$</span>
         <input
           name="cost"
           id="cost-input"
@@ -5838,14 +5853,21 @@ const InventorySystem = ({ onLogout }) => {
         Selling Price <span className="text-red-500">*</span>
       </label>
       <div className="relative">
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400">₦</span>
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400">$</span>
         <input
-          name="price"
+          name="text"
           id="price-input"
           type="number"
           step="0.01"
           min="0"
           placeholder="0.00"
+          onInput={(e) => {
+            const raw = e.target.value.replace(/,/g, '').replace(/[^0-9.]/g, '');
+            const parts = raw.split('.');
+            parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+            e.target.value = parts.join('.');
+          }}
+
           className={`w-full pl-8 pr-3 py-3 border rounded-lg transition-all text-sm ${
             darkMode
               ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white placeholder-gray-400 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
@@ -5866,16 +5888,16 @@ const InventorySystem = ({ onLogout }) => {
                         Total Amount Paid <span className="text-red-500">*</span>
                       </label>
                       <div className="relative">
-                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400">₦</span>
+                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400">$</span>
                         <input
-                          name="totalAmountPaid"
-                          id="total-amount-paid-input-tablet"
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          placeholder="0.00"
-                          tabIndex={-1}
-                          className={`w-full pl-8 pr-4 py-3 border rounded-lg transition-all ${
+                         name="totalAmountPaid"
+                         id="total-amount-paid-input-tablet"
+                         type="text"
+                         inputMode="decimal"
+                         placeholder="0.00"
+                         tabIndex={-1}
+                         onInput={(e) => { e.target.value = formatWithCommas(e.target.value); e.target.form?.dispatchEvent(new Event('input', { bubbles: true })); }}
+                         className={`w-full pl-8 pr-4 py-3 border rounded-lg transition-all ${
                             darkMode
                               ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white placeholder-gray-400 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
                               : 'bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
@@ -5890,16 +5912,16 @@ const InventorySystem = ({ onLogout }) => {
                         Delivery Cost
                       </label>
                       <div className="relative">
-                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400">₦</span>
+                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400">$</span>
                         <input
                           name="shippingCost"
-                          id="shipping-input-tablet"
-                          type="number"
-                          step="0.01"
-                          min="0"
+                          id="shipping-input"
+                          type="text"
+                          inputMode="decimal"
                           placeholder="0.00"
                           defaultValue="0"
-                          className={`w-full pl-8 pr-4 py-3 border rounded-lg transition-all ${
+                          onInput={(e) => { e.target.value = formatWithCommas(e.target.value); e.target.form?.dispatchEvent(new Event('input', { bubbles: true })); }}
+                          className={`w-full pl-8 pr-3 py-3 border rounded-lg transition-all text-sm ${
                             darkMode
                               ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white placeholder-gray-400 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
                               : 'bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
@@ -5913,7 +5935,7 @@ const InventorySystem = ({ onLogout }) => {
                         Total Cost (AUTO)
                       </label>
                       <div className="relative">
-                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400">₦</span>
+                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400">$</span>
                         <input
                           id="total-cost-display-tablet"
                           type="text"
@@ -5933,7 +5955,7 @@ const InventorySystem = ({ onLogout }) => {
                         Cost per Unit (AUTO)
                       </label>
                       <div className="relative">
-                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400">₦</span>
+                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400">$</span>
                         <input
                           name="cost"
                           id="cost-input-tablet"
@@ -5954,20 +5976,20 @@ const InventorySystem = ({ onLogout }) => {
                         Selling Price <span className="text-red-500">*</span>
                       </label>
                       <div className="relative">
-                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400">₦</span>
+                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400">$</span>
                         <input
                           name="price"
-                          id="price-input-tablet"
-                          type="number"
-                          step="0.01"
-                          min="0"
+                          id="price-input"
+                          type="text"
+                          inputMode="decimal"
                           placeholder="0.00"
-                          className={`w-full pl-8 pr-4 py-3 border rounded-lg transition-all ${
+                          onInput={(e) => { e.target.value = formatWithCommas(e.target.value); e.target.form?.dispatchEvent(new Event('input', { bubbles: true })); }}
+                          className={`w-full pl-8 pr-3 py-3 border rounded-lg transition-all text-sm ${
                             darkMode
                               ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white placeholder-gray-400 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
                               : 'bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
                           }`}
-                        
+                          required
                         />
                       </div>
                     </div>
@@ -5980,7 +6002,7 @@ const InventorySystem = ({ onLogout }) => {
                         Total Amount Paid <span className="text-red-500">*</span>
                       </label>
                       <div className="relative">
-                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400">₦</span>
+                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400">$</span>
                         <input
                           name="totalAmountPaid"
                           id="total-amount-paid-input-mobile"
@@ -6003,15 +6025,15 @@ const InventorySystem = ({ onLogout }) => {
                         Delivery Cost
                       </label>
                       <div className="relative">
-                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400">₦</span>
+                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400">$</span>
                         <input
                           name="shippingCost"
                           id="shipping-input-mobile"
-                          type="number"
-                          step="0.01"
-                          min="0"
+                          type="text"
+                          inputMode="decimal"
                           placeholder="0.00"
                           defaultValue="0"
+                          onInput={(e) => { e.target.value = formatWithCommas(e.target.value); e.target.form?.dispatchEvent(new Event('input', { bubbles: true })); }}
                           className={`w-full pl-8 pr-4 py-3 border rounded-lg transition-all ${
                             darkMode
                               ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white placeholder-gray-400 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
@@ -6026,7 +6048,7 @@ const InventorySystem = ({ onLogout }) => {
                         Total Cost (AUTO)
                       </label>
                       <div className="relative">
-                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400">₦</span>
+                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400">$</span>
                         <input
                           id="total-cost-display-mobile"
                           type="text"
@@ -6046,7 +6068,7 @@ const InventorySystem = ({ onLogout }) => {
                         Cost per Unit (AUTO)
                       </label>
                       <div className="relative">
-                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400">₦</span>
+                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400">$</span>
                         <input
                           name="cost"
                           id="cost-input-mobile"
@@ -6067,20 +6089,19 @@ const InventorySystem = ({ onLogout }) => {
                         Selling Price <span className="text-red-500">*</span>
                       </label>
                       <div className="relative">
-                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400">₦</span>
+                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400">$</span>
                         <input
                           name="price"
                           id="price-input-mobile"
-                          type="number"
-                          step="0.01"
-                          min="0"
+                          type="text"
+                          inputMode="decimal"
                           placeholder="0.00"
+                          onInput={(e) => { e.target.value = formatWithCommas(e.target.value); e.target.form?.dispatchEvent(new Event('input', { bubbles: true })); }}
                           className={`w-full pl-8 pr-4 py-3 border rounded-lg transition-all ${
                             darkMode
                               ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white placeholder-gray-400 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
                               : 'bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
                           }`}
-                         
                         />
                       </div>
                     </div>
@@ -6106,7 +6127,7 @@ const InventorySystem = ({ onLogout }) => {
                         Expected Profit Per Unit
                       </label>
                       <div className="relative">
-                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400">₦</span>
+                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400">$</span>
                         <input 
                           id="profit-per-unit-display"
                           type="text" 
@@ -6126,7 +6147,7 @@ const InventorySystem = ({ onLogout }) => {
                         Expected Total Profit
                       </label>
                       <div className="relative">
-                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400">₦</span>
+                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400">$</span>
                         <input 
                           id="total-profit-display"
                           type="text" 
@@ -6385,7 +6406,7 @@ const InventorySystem = ({ onLogout }) => {
                           </div>
                           {customer.totalOrders > 0 && (
                             <p className={`text-xs mt-1 ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>
-                              {customer.totalOrders} orders • ₦{customer.totalSpent.toFixed(2)} total
+                              {customer.totalOrders} orders • ${customer.totalSpent.toFixed(2)} total
                             </p>
                           )}
                         </div>
@@ -6625,7 +6646,7 @@ const InventorySystem = ({ onLogout }) => {
                                       {item.name}
                                     </p>
                                     <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>
-                                      ID: {item.id} • Stock: {item.quantity} • ₦{item.price}
+                                      ID: {item.id} • Stock: {item.quantity} • ${item.price}
                                     </p>
                                   </div>
 
@@ -6649,9 +6670,15 @@ const InventorySystem = ({ onLogout }) => {
                   })()}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Quantity per Product <span className="text-red-500">*</span>
                   </label>
+                  <div className="mb-3">
+                    <div className={`inline-flex rounded-lg border overflow-hidden text-sm font-medium ${darkMode ? 'border-[#2A2A2A]' : 'border-gray-300'}`}>
+                      <button type="button" onClick={() => setQtyType('pieces')} className={`px-5 py-2 transition-all ${qtyType === 'pieces' ? 'bg-[#2FB7A1] text-white' : darkMode ? 'bg-[#1A1A1A] text-gray-400 hover:text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>📦 Pieces</button>
+                      <button type="button" onClick={() => setQtyType('carton')} className={`px-5 py-2 transition-all border-l ${darkMode ? 'border-[#2A2A2A]' : 'border-gray-300'} ${qtyType === 'carton' ? 'bg-[#2FB7A1] text-white' : darkMode ? 'bg-[#1A1A1A] text-gray-400 hover:text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>🏷️ Cartons</button>
+                    </div>
+                  </div>
                   {selectedProductIds.length === 0 ? (
                     <p className={`text-sm italic ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>
                       Select products above to set quantities
@@ -6669,7 +6696,7 @@ const InventorySystem = ({ onLogout }) => {
                                 {item?.name || id}
                               </p>
                               <p className={`text-xs ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>
-                                Stock: {item?.quantity} · ₦{item?.price}/unit
+                                Stock: {item?.quantity} · ${item?.price}/unit {qtyType === 'carton' ? '· enter # of cartons' : ''}
                               </p>
                             </div>
                             <input
@@ -6677,15 +6704,18 @@ const InventorySystem = ({ onLogout }) => {
                               type="number"
                               min="1"
                               max={item?.quantity}
-                              placeholder="Qty"
+                             // placeholder="Qty"
                               className={`w-24 px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-[#2FB7A1] text-center ${
                                 darkMode
                                   ? 'bg-[#111827] border-[#2A2A2A] text-white placeholder-gray-500'
                                   : 'bg-white border-[#E3E8EF] text-[#0F172A]'
                               }`}
                               required
+                              placeholder={qtyType === 'carton' ? 'Cartons' : 'Pieces'}
                               onChange={(e) => {
                                 const value = e.target.value;
+                                const multiplier = qtyType === 'carton' ? (piecesPerCarton[id] || 1) : 1;
+                                const actualQty = parseFloat(value || 0) * multiplier;
                                 setOrderQuantities(prev => {
                                   const next = { ...prev, [id]: value };
                                   // Recompute expected total using latest quantities and prices
@@ -6704,27 +6734,45 @@ const InventorySystem = ({ onLogout }) => {
                                 });
                               }}
                             />
+                          {qtyType === 'carton' && (
+                            <div className="mt-2 flex items-center gap-2">
+                              <span className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Pieces/carton:</span>
+                              <input
+                                type="number" min="1" placeholder="e.g. 12"
+                                value={piecesPerCarton[id] || ''}
+                                onChange={(e) => {
+                                  const ppc = parseFloat(e.target.value) || 1;
+                                  setPiecesPerCarton(prev => ({...prev, [id]: ppc}));
+                                  const cartons = parseFloat(document.querySelector(`[name="quantity_${id}"]`)?.value || 0);
+                                  setOrderQuantities(prev => ({...prev, [id]: cartons * ppc}));
+                                }}
+                                className={`w-20 px-2 py-1 border rounded text-xs focus:ring-2 focus:ring-[#2FB7A1] ${darkMode ? 'bg-[#111827] border-[#2A2A2A] text-white' : 'bg-white border-[#E3E8EF]'}`}
+                              />
+                              {piecesPerCarton[id] && orderQuantities[id] && (
+                                <span className="text-xs text-[#2FB7A1] font-semibold">= {orderQuantities[id]} pcs</span>
+                              )}
+                            </div>
+                          )}
                           </div>
                         );
                       })}
                     </div>
                   )}
                 </div>
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Amount Paid (₦)
+                    Amount Paid
                   </label>
                   {selectedProductIds.length <= 1 ? (
                   <div>
                     <div className="relative">
-                      <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400">₦</span>
+                      <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400">$</span>
                       <input
                         name="amountPaid"
-                        type="number"
-                        step="0.01"
-                        min="0"
+                        type="text"
+                        inputMode="decimal"
                         placeholder="Amount paid (optional)"
+                        onInput={(e) => { e.target.value = formatWithCommas(e.target.value); }}
                         className={`w-full pl-8 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#2FB7A1] ${
                           darkMode
                             ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white placeholder-gray-400'
@@ -6738,7 +6786,7 @@ const InventorySystem = ({ onLogout }) => {
                       }`}>
                         Expected amount based on quantities above:{' '}
                         <span className="font-semibold">
-                          ₦{orderExpectedTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          ${orderExpectedTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
                       </p>
                     )}
@@ -6772,7 +6820,7 @@ const InventorySystem = ({ onLogout }) => {
                               {item?.name || id}
                             </p>
                             <p className={`text-xs ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>
-                              ₦{item?.price}/unit
+                              ${item?.price}/unit
                             </p>
                           </div>
 
@@ -6780,15 +6828,15 @@ const InventorySystem = ({ onLogout }) => {
                           <div className="relative w-32 flex-shrink-0">
                             <span className={`absolute left-2.5 top-1/2 -translate-y-1/2 text-xs ${
                               darkMode ? 'text-gray-500' : 'text-[#94A3B8]'
-                            }`}>₦</span>
+                            }`}>$</span>
                             <input
                               name={`amountPaid_${id}`}
-                              type="number"
-                              step="0.01"
-                              min="0"
+                              type="text"
+                              inputMode="decimal"
                               placeholder="0.00"
                               value={productAmountInputs[id] || ''}
                               onChange={(e) => {
+                                e.target.value = formatWithCommas(e.target.value);
                                 setProductAmountInputs(prev => ({
                                   ...prev,
                                   [id]: e.target.value
@@ -6813,8 +6861,8 @@ const InventorySystem = ({ onLogout }) => {
                         darkMode ? 'text-gray-400' : 'text-[#64748B]'
                       }`}>Total</span>
                       <span className="text-sm font-bold text-[#2FB7A1]">
-                        ₦{selectedProductIds.reduce((sum, id) => {
-                          return sum + (parseFloat(productAmountInputs[id]) || 0);
+                      ${selectedProductIds.reduce((sum, id) => {
+                          return sum + parseCommaNumber(productAmountInputs[id]);
                         }, 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </span>
                     </div>
@@ -7056,8 +7104,8 @@ const InventorySystem = ({ onLogout }) => {
             e.preventDefault();
             const formData = new FormData(e.target);
             const quantityToAdd = parseInt(formData.get('quantity'));
-            const costPrice = parseFloat(formData.get('costPrice'));
-            const sellingPrice = parseFloat(formData.get('sellingPrice'));
+            const costPrice = parseCommaNumber(formData.get('costPrice'));
+            const sellingPrice = parseCommaNumber(formData.get('sellingPrice'));
 
             if (!quantityToAdd || quantityToAdd <= 0) {
               showToast('Please enter a valid quantity greater than 0');
@@ -7101,12 +7149,12 @@ const InventorySystem = ({ onLogout }) => {
               <div>
                 <label className="block text-sm font-medium text-[#64748B] mb-2">Cost Price per Unit (New Batch)</label>
                 <input 
-                  name="costPrice" 
-                  type="number" 
-                  step="0.01"
-                  min="0"
-                  placeholder="Enter cost price for this batch" 
+                  name="costPrice"
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="Enter cost price for this batch"
                   defaultValue={productToUpdate.cost || productToUpdate.latestBatchCostPrice}
+                  onInput={(e) => { e.target.value = formatWithCommas(e.target.value); }}
                   className="w-full px-4 py-3 border border-[#E3E8EF] rounded-lg focus:ring-2 focus:ring-[#2FB7A1]" 
                   required 
                 />
@@ -7115,12 +7163,12 @@ const InventorySystem = ({ onLogout }) => {
               <div>
                 <label className="block text-sm font-medium text-[#64748B] mb-2">Selling Price per Unit (New Batch)</label>
                 <input 
-                  name="sellingPrice" 
-                  type="number" 
-                  step="0.01"
-                  min="0"
-                  placeholder="Enter selling price for this batch" 
+                  name="sellingPrice"
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="Enter selling price for this batch"
                   defaultValue={productToUpdate.price}
+                  onInput={(e) => { e.target.value = formatWithCommas(e.target.value); }}
                   className="w-full px-4 py-3 border border-[#E3E8EF] rounded-lg focus:ring-2 focus:ring-[#2FB7A1]" 
                   required 
                 />
@@ -7145,9 +7193,9 @@ const InventorySystem = ({ onLogout }) => {
               e.preventDefault();
               const formData = new FormData(e.target);
               const updates = {
-                price: formData.get('price'),
-                cost: formData.get('cost'),
-                shippingCost: formData.get('shippingCost'),
+                price: parseCommaNumber(formData.get('price')),
+                cost: parseCommaNumber(formData.get('cost')),
+                shippingCost: parseCommaNumber(formData.get('shippingCost')),
                 label: formData.get('label') || ''
               };
               handleUpdateProduct(productToEdit.id, updates);
@@ -7161,8 +7209,8 @@ const InventorySystem = ({ onLogout }) => {
               const marginPct = priceVal > 0 ? ((margin / priceVal) * 100).toFixed(1) : '0.0';
               const totalCostEl = form.querySelector('#edit-total-cost-preview');
               const marginEl = form.querySelector('#edit-margin-preview');
-              if (totalCostEl) totalCostEl.textContent = `₦${(costVal + shippingVal).toFixed(2)}`;
-              if (marginEl) marginEl.textContent = `₦${margin.toFixed(2)} (${marginPct}%)`;
+              if (totalCostEl) totalCostEl.textContent = `$${(costVal + shippingVal).toFixed(2)}`;
+              if (marginEl) marginEl.textContent = `$${margin.toFixed(2)} (${marginPct}%)`;
             }}
           >
  <div className="space-y-4">
@@ -7175,17 +7223,17 @@ const InventorySystem = ({ onLogout }) => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-[#64748B] mb-2">
-                    Cost per Unit (₦)
+                    Cost per Unit ($)
                   </label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">₦</span>
+                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
                     <input
                       name="cost"
                       id="edit-cost-input"
-                      type="number"
-                      step="0.01"
-                      min="0"
+                      type="text"
+                      inputMode="decimal"
                       defaultValue={productToEdit.cost}
+                      onInput={(e) => { e.target.value = formatWithCommas(e.target.value); e.target.form?.dispatchEvent(new Event('input', { bubbles: true })); }}
                       className="w-full pl-8 pr-4 py-2.5 border border-[#E3E8EF] rounded-lg text-sm focus:ring-2 focus:ring-[#2FB7A1]"
                       required
                     />
@@ -7193,19 +7241,19 @@ const InventorySystem = ({ onLogout }) => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-[#64748B] mb-2">
-                    Selling Price (₦)
+                    Selling Price ($)
                   </label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">₦</span>
+                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
                     <input
                       name="price"
-                      type="number"
-                      step="0.01"
-                      min="0"
+                      type="text"
+                      inputMode="decimal"
                       defaultValue={productToEdit.price}
+                      onInput={(e) => { e.target.value = formatWithCommas(e.target.value); e.target.form?.dispatchEvent(new Event('input', { bubbles: true })); }}
                       className="w-full pl-8 pr-4 py-2.5 border border-[#E3E8EF] rounded-lg text-sm focus:ring-2 focus:ring-[#2FB7A1]"
                       required
-                    />
+                      />
                   </div>
                 </div>
               </div>
@@ -7213,18 +7261,17 @@ const InventorySystem = ({ onLogout }) => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-[#64748B] mb-2">
-                    Delivery Cost (₦)
+                    Delivery Cost ($)
                   </label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">₦</span>
+                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
                     <input
-                      name="shippingCost"
-                      id="edit-shipping-input"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      defaultValue={productToEdit.shippingCost || 0}
-                      className="w-full pl-8 pr-4 py-2.5 border border-[#E3E8EF] rounded-lg text-sm focus:ring-2 focus:ring-[#2FB7A1]"
+                     name="shippingCost"
+                     id="edit-shipping-input"
+                     type="text"
+                     inputMode="decimal"
+                     defaultValue={productToEdit.shippingCost || 0}
+                     onInput={(e) => { e.target.value = formatWithCommas(e.target.value); e.target.form?.dispatchEvent(new Event('input', { bubbles: true })); }}
                     />
                   </div>
                 </div>
@@ -7250,18 +7297,18 @@ const InventorySystem = ({ onLogout }) => {
                   <div>
                     <p className={`text-xs mb-1 ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>Total Cost</p>
                     <p id="edit-total-cost-preview" className={`font-semibold ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>
-                      ₦{((productToEdit.cost || 0) + (productToEdit.shippingCost || 0)).toFixed(2)}
+                      ${((productToEdit.cost || 0) + (productToEdit.shippingCost || 0)).toFixed(2)}
                     </p>
                   </div>
                   <div>
                     <p className={`text-xs mb-1 ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>Margin</p>
                     <p id="edit-margin-preview" className={`font-semibold ${((productToEdit.price || 0) - (productToEdit.cost || 0)) >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                      ₦{((productToEdit.price || 0) - (productToEdit.cost || 0)).toFixed(2)} ({productToEdit.price > 0 ? ((((productToEdit.price || 0) - (productToEdit.cost || 0)) / productToEdit.price) * 100).toFixed(1) : '0.0'}%)
+                      ${((productToEdit.price || 0) - (productToEdit.cost || 0)).toFixed(2)} ({productToEdit.price > 0 ? ((((productToEdit.price || 0) - (productToEdit.cost || 0)) / productToEdit.price) * 100).toFixed(1) : '0.0'}%)
                     </p>
                   </div>
                   <div>
                     <p className={`text-xs mb-1 ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>Selling Price</p>
-                    <p className="font-semibold text-[#2FB7A1]">₦{(productToEdit.price || 0).toFixed(2)}</p>
+                    <p className="font-semibold text-[#2FB7A1]">${(productToEdit.price || 0).toFixed(2)}</p>
                   </div>
                 </div>
               </div>
@@ -7418,11 +7465,11 @@ const InventorySystem = ({ onLogout }) => {
               </div>
               <div>
                 <p className="text-sm text-[#64748B] dark:text-gray-400">Cost per Unit</p>
-                <p className="font-semibold text-lg text-[#0F172A] dark:text-white">₦{selectedProduct.cost}</p>
+                <p className="font-semibold text-lg text-[#0F172A] dark:text-white">${selectedProduct.cost}</p>
               </div>
               <div>
                 <p className="text-sm text-[#64748B] dark:text-gray-400">Selling Price</p>
-                <p className="font-semibold text-lg text-[#0F172A] dark:text-white">₦{selectedProduct.price}</p>
+                <p className="font-semibold text-lg text-[#0F172A] dark:text-white">${selectedProduct.price}</p>
               </div>
             </div>
             <div className="pt-4 border-t border-[#E3E8EF] dark:border-[#2A2A2A]">
@@ -7517,7 +7564,7 @@ const InventorySystem = ({ onLogout }) => {
                         Amount Paid
                       </p>
                       <p className={`text-sm font-semibold ${darkMode ? 'text-gray-200' : 'text-[#0F172A]'}`}>
-                        ₦{amountPaid.toFixed(2)}
+                        ${amountPaid.toFixed(2)}
                       </p>
                     </div>
                   </div>
@@ -7608,7 +7655,7 @@ const InventorySystem = ({ onLogout }) => {
                         <div>
                           <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>Unit Price</p>
                           <p className={darkMode ? 'text-gray-200' : 'text-[#0F172A]'}>
-                            ₦{product.price}
+                            ${product.price}
                           </p>
                         </div>
                       )}
@@ -7707,7 +7754,7 @@ const InventorySystem = ({ onLogout }) => {
                   <div><span className="font-medium">Shipping Date:</span> {selectedShipping.shippingDate}</div>
                 )}
                 {selectedShipping.shippingCost && (
-                  <div><span className="font-medium">Shipping Cost:</span> ₦{parseFloat(selectedShipping.shippingCost).toFixed(2)}</div>
+                  <div><span className="font-medium">Shipping Cost:</span> ${parseFloat(selectedShipping.shippingCost).toFixed(2)}</div>
                 )}
                 {selectedShipping.address && (
                   <div className="pt-1">
@@ -7779,7 +7826,7 @@ const InventorySystem = ({ onLogout }) => {
                           )}
                           {entry.shippingCost && (
                             <div className="text-sm text-[#64748B] mb-1">
-                              <span className="font-medium">Cost:</span> ₦{parseFloat(entry.shippingCost).toFixed(2)}
+                              <span className="font-medium">Cost:</span> ${parseFloat(entry.shippingCost).toFixed(2)}
                             </div>
                           )}
                           {entry.notes && (
