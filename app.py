@@ -808,6 +808,42 @@ def update_inventory_quantity(product_id):
         if 'label' in data:
             product.label = data['label'] or None
 
+        # ADD THIS BLOCK:
+        if 'setQuantity' in data:
+            try:
+                new_qty = int(data['setQuantity'])
+                if new_qty < 0:
+                    return jsonify({'error': 'Quantity cannot be negative'}), 400
+                
+                # Get all batches for this product
+                batches = Batch.query.filter_by(product_id=product_id).all()
+                total_sold = sum(b.quantity_sold for b in batches)
+                
+                # Find the latest batch to adjust its remaining quantity
+                latest_batch = Batch.query.filter_by(product_id=product_id)\
+                    .order_by(Batch.date_added.desc()).first()
+                
+                if not latest_batch:
+                    return jsonify({'error': 'No batches found for this product'}), 400
+                
+                # Current total remaining across all batches
+                current_remaining = sum(b.quantity_remaining for b in batches)
+                diff = new_qty - current_remaining
+                
+                # Adjust the latest batch's remaining by the difference
+                new_latest_remaining = latest_batch.quantity_remaining + diff
+                if new_latest_remaining < 0:
+                    return jsonify({'error': f'Cannot set quantity to {new_qty}. Would require removing more stock than exists in latest batch ({latest_batch.quantity_remaining} units). Reduce other batches first.'}), 400
+                
+                latest_batch.quantity_remaining = new_latest_remaining
+                # Also keep quantity_added in sync if we're adding stock
+                if diff > 0:
+                    latest_batch.quantity_added += diff
+                    
+            except (ValueError, TypeError) as e:
+                return jsonify({'error': f'Invalid setQuantity value: {str(e)}'}), 400
+
+
         db.session.commit()
         
         # Return updated product with batches

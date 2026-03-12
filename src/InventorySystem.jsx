@@ -81,6 +81,24 @@ const apiCall = async (endpoint, options = {}) => {
   }
 };
 
+// Debounce ref for shipping updates
+const shippingDebounceRef = React.useRef({});
+
+const handleUpdateShippingDebounced = (orderId, updates) => {
+  // Update local state immediately for snappy UI
+  setShippingQueue(prev => prev.map(s => s.id === orderId ? { ...s, ...updates } : s));
+  if (selectedShipping?.id === orderId) {
+    setSelectedShipping(prev => ({ ...prev, ...updates }));
+  }
+  // Debounce the server call by 800ms
+  if (shippingDebounceRef.current[orderId]) {
+    clearTimeout(shippingDebounceRef.current[orderId]);
+  }
+  shippingDebounceRef.current[orderId] = setTimeout(() => {
+    handleUpdateShipping(orderId, updates);
+  }, 800);
+};
+
 const InventorySystem = ({ onLogout }) => {
   const [activeTab, setActiveTab] = useState('inventory');
   const [showModal, setShowModal] = useState(false);
@@ -3199,7 +3217,7 @@ const InventorySystem = ({ onLogout }) => {
                                 type="text"
                                 placeholder="e.g. NG123456789"
                                 value={ship.trackingNumber || ''}
-                                onChange={e => handleUpdateShipping(ship.id, { trackingNumber: e.target.value })}
+                                onChange={e => handleUpdateShippingDebounced(ship.id, { trackingNumber: e.target.value })}
                                 className={`w-full px-3 py-2 rounded-md text-sm border outline-none transition focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1] ${
                                   darkMode
                                     ? 'bg-[#111827] border-[#2A2A2A] text-white placeholder-gray-600'
@@ -5346,39 +5364,43 @@ const InventorySystem = ({ onLogout }) => {
           }}
           onInput={(e) => {
             const form = e.currentTarget;
-            const totalAmountPaidInput = form.querySelector('#total-amount-paid-input') || form.querySelector('#total-amount-paid-input-tablet') || form.querySelector('#total-amount-paid-input-mobile');
-            const shippingInput = form.querySelector('#shipping-input') || form.querySelector('#shipping-input-tablet') || form.querySelector('#shipping-input-mobile');
-            const totalCostDisplay = form.querySelector('#total-cost-display') || form.querySelector('#total-cost-display-tablet') || form.querySelector('#total-cost-display-mobile');
-            const costInput = form.querySelector('#cost-input') || form.querySelector('#cost-input-tablet') || form.querySelector('#cost-input-mobile');
-            const priceInput = form.querySelector('#price-input') || form.querySelector('#price-input-tablet') || form.querySelector('#price-input-mobile');
+            // Grab the FIRST matching element regardless of responsive variant
+            const totalAmountPaidInput = form.querySelector('[id^="total-amount-paid-input"]');
+            const shippingInput = form.querySelector('[id^="shipping-input"]');
+            const totalCostDisplay = form.querySelector('[id^="total-cost-display"]');
+            const costInput = form.querySelector('[name="cost"]');
+            const priceInput = form.querySelector('[id^="price-input"]');
             const quantityInput = form.querySelector('[name="quantity"]');
             const profitPerUnitDisplay = form.querySelector('#profit-per-unit-display');
             const totalProfitDisplay = form.querySelector('#total-profit-display');
-
-            const totalAmountPaid = parseFloat((totalAmountPaidInput?.value || '').replace(/,/g,'')) || 0;
-            const shipping = parseFloat((shippingInput?.value || '').replace(/,/g,'')) || 0;
+          
+            const totalAmountPaid = parseCommaNumber(totalAmountPaidInput?.value || '0');
+            const shipping = parseCommaNumber(shippingInput?.value || '0');
             const quantity = parseFloat(quantityInput?.value) || 0;
-
-            // Total Cost = Amount Paid + Delivery Cost
+          
             const totalCost = totalAmountPaid + shipping;
-            if (totalCostDisplay) totalCostDisplay.value = totalCost.toFixed(2);
-
-            // Cost per Unit = Total Cost / Quantity
             const costPerUnit = quantity > 0 ? totalCost / quantity : 0;
-            if (costInput) costInput.value = costPerUnit.toFixed(2);
-
-            // Profit calculations
-            const price = parseFloat(priceInput?.value) || 0;
+          
+            // Update all visible total-cost displays
+            form.querySelectorAll('[id^="total-cost-display"]').forEach(el => { el.value = totalCost.toFixed(2); });
+            // Update all cost inputs (they are readOnly so name="cost" is safe)
+            form.querySelectorAll('[name="cost"]').forEach(el => { el.value = costPerUnit.toFixed(2); });
+          
+            const price = parseCommaNumber(priceInput?.value || '0');
             const profitPerUnit = price - costPerUnit;
             const totalProfit = profitPerUnit * quantity;
-
+          
             if (profitPerUnitDisplay) {
               profitPerUnitDisplay.value = profitPerUnit.toFixed(2);
-              profitPerUnitDisplay.className = profitPerUnitDisplay.className.replace(/text-(red|green)-\d+/g, '') + (profitPerUnit >= 0 ? (darkMode ? ' text-green-400' : ' text-green-600') : (darkMode ? ' text-red-400' : ' text-red-600'));
+              profitPerUnitDisplay.className = profitPerUnitDisplay.className
+                .replace(/text-(red|green)-\d+/g, '') +
+                (profitPerUnit >= 0 ? (darkMode ? ' text-green-400' : ' text-green-600') : (darkMode ? ' text-red-400' : ' text-red-600'));
             }
             if (totalProfitDisplay) {
               totalProfitDisplay.value = totalProfit.toFixed(2);
-              totalProfitDisplay.className = totalProfitDisplay.className.replace(/text-(red|green)-\d+/g, '') + (totalProfit >= 0 ? (darkMode ? ' text-green-400' : ' text-green-600') : (darkMode ? ' text-red-400' : ' text-red-600'));
+              totalProfitDisplay.className = totalProfitDisplay.className
+                .replace(/text-(red|green)-\d+/g, '') +
+                (totalProfit >= 0 ? (darkMode ? ' text-green-400' : ' text-green-600') : (darkMode ? ' text-red-400' : ' text-red-600'));
             }
           }}>
  
@@ -6186,6 +6208,19 @@ const InventorySystem = ({ onLogout }) => {
                         : 'bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
                     }`}
                   />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-[#64748B] mb-2">
+                    Current Stock Quantity
+                  </label>
+                  <input
+                    name="editQty"
+                    type="number"
+                    min="0"
+                    defaultValue={productToEdit.quantity}
+                    className="w-full px-4 py-2.5 border border-[#E3E8EF] rounded-lg text-sm focus:ring-2 focus:ring-[#2FB7A1]"
+                  />
+                  <p className="text-xs text-[#64748B] mt-1">Override the current stock count directly.</p>
                 </div>
 
                 <div>
@@ -7194,11 +7229,13 @@ const InventorySystem = ({ onLogout }) => {
             onSubmit={(e) => {
               e.preventDefault();
               const formData = new FormData(e.target);
+              const qtyVal = parseInt(formData.get('editQty'));
               const updates = {
                 price: parseCommaNumber(formData.get('price')),
                 cost: parseCommaNumber(formData.get('cost')),
                 shippingCost: parseCommaNumber(formData.get('shippingCost')),
-                label: formData.get('label') || ''
+                label: formData.get('label') || '',
+                ...(userRole === 'admin' && !isNaN(qtyVal) && qtyVal >= 0 ? { setQuantity: qtyVal } : {})
               };
               handleUpdateProduct(productToEdit.id, updates);
             }}
