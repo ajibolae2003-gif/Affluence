@@ -6218,8 +6218,8 @@ const InventorySystem = ({ onLogout }) => {
                     name="editQty"
                     type="number"
                     min="0"
-                    defaultValue={productToEdit.quantity}
-                    className="w-full px-4 py-2.5 border border-[#E3E8EF] rounded-lg text-sm focus:ring-2 focus:ring-[#2FB7A1]"
+                    defaultValue={productToEdit?.quantity ?? ''}
+                    className="w-full px-4 py-3 border border-[#E3E8EF] rounded-lg text-sm focus:ring-2 focus:ring-[#2FB7A1]"
                   />
                   <p className="text-xs text-[#64748B] mt-1">Override the current stock count directly.</p>
                 </div>
