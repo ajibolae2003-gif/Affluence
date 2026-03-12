@@ -82,7 +82,7 @@ const apiCall = async (endpoint, options = {}) => {
 };
 
 // Debounce ref for shipping updates
-const shippingDebounceRef = useRef({});
+
 
 const handleUpdateShippingDebounced = (orderId, updates) => {
   // Update local state immediately for snappy UI
@@ -104,6 +104,7 @@ const InventorySystem = ({ onLogout }) => {
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const shippingDebounceRef = useRef({});
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [notifications, setNotifications] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState(null);
