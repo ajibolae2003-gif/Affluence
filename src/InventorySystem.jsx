@@ -199,9 +199,11 @@ const InventorySystem = ({ onLogout }) => {
 
   const formatWithCommas = (value) => {
     const raw = String(value).replace(/,/g, '').replace(/[^0-9.]/g, '');
-    const parts = raw.split('.');
-    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-    return parts.slice(0, 2).join('.');
+    const firstDot = raw.indexOf('.');
+    const intPart = firstDot === -1 ? raw : raw.slice(0, firstDot);
+    const decPart = firstDot === -1 ? '' : raw.slice(firstDot);
+    const formattedInt = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return formattedInt + decPart;
   };
 
   const parseCommaNumber = (value) => {
