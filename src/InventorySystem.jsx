@@ -5859,7 +5859,7 @@ const InventorySystem = ({ onLogout }) => {
         <input
           name="text"
           id="price-input"
-          type="number"
+          type="text"
           step="0.01"
           min="0"
           placeholder="0.00"
