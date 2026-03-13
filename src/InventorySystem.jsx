@@ -197,6 +197,12 @@ const InventorySystem = ({ onLogout }) => {
   const [priceChangeLog, setPriceChangeLog] = useState([]);
   const [loadingPriceChangeLog, setLoadingPriceChangeLog] = useState(false);
   const [priceLogProductFilter, setPriceLogProductFilter] = useState('');
+  const [stockMovements, setStockMovements] = useState([]);
+  const [loadingStockMovements, setLoadingStockMovements] = useState(false);
+  const [stockMovementFromDate, setStockMovementFromDate] = useState('');
+  const [stockMovementToDate, setStockMovementToDate] = useState('');
+  const [stockMovementProductFilter, setStockMovementProductFilter] = useState('');
+  const [stockMovementTypeFilter, setStockMovementTypeFilter] = useState('all'); // all, in, out, adjust
   const [inventoryReportData, setInventoryReportData] = useState(null);
   const [loadingInventoryReport, setLoadingInventoryReport] = useState(false);
   const [inventoryReportSelectedProductId, setInventoryReportSelectedProductId] = useState(null);
@@ -216,6 +222,9 @@ const InventorySystem = ({ onLogout }) => {
     lowStockCount: 0
   });
 
+  const [saleProfitBreakdown, setSaleProfitBreakdown] = useState(null);
+  const [loadingSaleProfitBreakdown, setLoadingSaleProfitBreakdown] = useState(false);
+
   const formatWithCommas = (value) => {
     const raw = String(value).replace(/,/g, '').replace(/[^0-9.]/g, '');
     const firstDot = raw.indexOf('.');
@@ -227,6 +236,27 @@ const InventorySystem = ({ onLogout }) => {
 
   const parseCommaNumber = (value) => {
     return parseFloat(String(value || '').replace(/,/g, '')) || 0;
+  };
+
+  // Reporting helpers
+  const formatCurrencyNaira = (value) => {
+    const num = Number(value || 0);
+    if (!Number.isFinite(num)) return '₦0.00';
+    return `₦${num.toLocaleString('en-NG', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
+  };
+
+  const formatReportDate = (value) => {
+    if (!value) return '—';
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return String(value);
+    return d.toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
   };
 
   const showToast = (message, type = 'success') => {
@@ -378,7 +408,37 @@ const InventorySystem = ({ onLogout }) => {
     if (activeTab === 'reports' && activeReportTab === 'priceLog') {
       fetchPriceChangeLog();
     }
-  }, [activeTab, activeReportTab, reportProductFilter, reportDateFrom, reportDateTo]);
+    if (activeTab === 'reports' && activeReportTab === 'stockMovement') {
+      fetchStockMovements();
+    }
+  }, [activeTab, activeReportTab, reportProductFilter, reportDateFrom, reportDateTo, stockMovementFromDate, stockMovementToDate, stockMovementProductFilter, stockMovementTypeFilter]);
+
+  const fetchStockMovements = async () => {
+    try {
+      setLoadingStockMovements(true);
+      const params = new URLSearchParams();
+      if (stockMovementFromDate) params.append('dateFrom', stockMovementFromDate);
+      if (stockMovementToDate) params.append('dateTo', stockMovementToDate);
+      if (stockMovementProductFilter) params.append('productId', stockMovementProductFilter);
+      if (stockMovementTypeFilter && stockMovementTypeFilter !== 'all') {
+        params.append('type', stockMovementTypeFilter);
+      }
+      const query = params.toString();
+      const result = await apiCall(`/reports/stock-movements${query ? `?${query}` : ''}`);
+      if (result.ok) {
+        setStockMovements(result.data.movements || []);
+      } else {
+        console.error('Failed to fetch stock movements:', result.error);
+        if (result.networkError) {
+          showToast('Cannot connect to backend. Please ensure Flask is running.');
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching stock movements:', error);
+    } finally {
+      setLoadingStockMovements(false);
+    }
+  };
 
   const fetchInventoryReport = async () => {
     try {
@@ -425,6 +485,26 @@ const InventorySystem = ({ onLogout }) => {
       setBatchTransactions([]);
     } finally {
       setLoadingBatchTransactions(false);
+    }
+  };
+
+  const fetchSaleProfitBreakdown = async (orderId) => {
+    try {
+      setLoadingSaleProfitBreakdown(true);
+      setSaleProfitBreakdown(null);
+      const result = await apiCall(`/reports/sales/${encodeURIComponent(orderId)}/profit-breakdown`);
+      if (result.ok) {
+        setSaleProfitBreakdown(result.data || null);
+      } else {
+        console.error('Failed to fetch sale profit breakdown:', result.error);
+        if (result.networkError) {
+          showToast('Cannot connect to backend. Please ensure Flask is running.');
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching sale profit breakdown:', error);
+    } finally {
+      setLoadingSaleProfitBreakdown(false);
     }
   };
   const fetchInventorySalesReportForProduct = async (productId) => {
@@ -1570,12 +1650,20 @@ const InventorySystem = ({ onLogout }) => {
       { totalSpent: 0, totalQuantity: 0, totalOrders: 0 }
     );
 
+    const lastOrder = filteredByDate.reduce((latest, o) => {
+      if (!o.dateCreated) return latest;
+      const d = new Date(o.dateCreated);
+      if (!latest) return d;
+      return d > latest ? d : latest;
+    }, null);
+
     return {
       name: customer.name,
       username: customer.username,
       totalSpent: totals.totalSpent,
       totalQuantity: totals.totalQuantity,
-      totalOrders: totals.totalOrders
+      totalOrders: totals.totalOrders,
+      lastOrderDate: lastOrder ? formatReportDate(lastOrder) : null,
     };
   })
   .filter((row) => {
@@ -4129,6 +4217,7 @@ const InventorySystem = ({ onLogout }) => {
                       { id: 'inventory', label: 'Inventory Report' },
                       { id: 'sales', label: 'Sales Report' },
                       { id: 'profit', label: 'Profit & Loss' },
+                      { id: 'stockMovement', label: 'Stock Movement' },
                       { id: 'priceLog', label: 'Price Change Log' }
                     ].map((tab) => (
                       <button
@@ -4158,7 +4247,7 @@ const InventorySystem = ({ onLogout }) => {
                       <div className="bg-white dark:bg-[#1A1A1A] rounded-xl shadow-sm border border-[#E3E8EF] dark:border-[#2A2A2A] p-6">
                         <p className="text-sm text-[#64748B] dark:text-gray-400 mb-2">Total Revenue</p>
                         <p className="text-2xl font-semibold text-[#0F172A] dark:text-white">
-                          ${customerReportData.reduce((sum, c) => sum + c.totalSpent, 0).toFixed(2)}
+                          {formatCurrencyNaira(customerReportData.reduce((sum, c) => sum + c.totalSpent, 0))}
                         </p>
                       </div>
                       <div className="bg-white dark:bg-[#1A1A1A] rounded-xl shadow-sm border border-[#E3E8EF] dark:border-[#2A2A2A] p-6">
@@ -4298,19 +4387,23 @@ const InventorySystem = ({ onLogout }) => {
                               <div className="bg-[#F9FAFB] dark:bg-[#2A2A2A] rounded-lg p-4 border border-[#E3E8EF] dark:border-[#2A2A2A]">
                                 <p className="text-xs text-[#64748B] dark:text-gray-400 mb-1">Total Revenue</p>
                                 <p className="text-xl font-semibold text-[#0F172A] dark:text-white">
-                                  ${customerPurchases.summary?.totalRevenue?.toFixed(2) || '0.00'}
+                                  {formatCurrencyNaira(customerPurchases.summary?.totalRevenue)}
                                 </p>
                               </div>
                               <div className="bg-[#F9FAFB] dark:bg-[#2A2A2A] rounded-lg p-4 border border-[#E3E8EF] dark:border-[#2A2A2A]">
                                 <p className="text-xs text-[#64748B] dark:text-gray-400 mb-1">Total Cost (FIFO)</p>
                                 <p className="text-xl font-semibold text-[#0F172A] dark:text-white">
-                                  ${customerPurchases.summary?.totalCost?.toFixed(2) || customerPurchases.summary?.totalCostFifo?.toFixed(2) || '0.00'}
+                                  {formatCurrencyNaira(
+                                    customerPurchases.summary?.totalCost ??
+                                    customerPurchases.summary?.totalCostFifo ??
+                                    0
+                                  )}
                                 </p>
                               </div>
                               <div className="bg-[#F9FAFB] dark:bg-[#2A2A2A] rounded-lg p-4 border border-[#E3E8EF] dark:border-[#2A2A2A]">
                                 <p className="text-xs text-[#64748B] dark:text-gray-400 mb-1">Total Profit</p>
                                 <p className={`text-xl font-semibold ${(customerPurchases.summary?.totalProfit || 0) >= 0 ? 'text-[#16A34A]' : 'text-[#DC2626]'}`}>
-                                  ${customerPurchases.summary?.totalProfit?.toFixed(2) || '0.00'}
+                                  {formatCurrencyNaira(customerPurchases.summary?.totalProfit)}
                                 </p>
                               </div>
                               <div className="bg-[#F9FAFB] dark:bg-[#2A2A2A] rounded-lg p-4 border border-[#E3E8EF] dark:border-[#2A2A2A]">
@@ -4350,12 +4443,18 @@ const InventorySystem = ({ onLogout }) => {
                                         <td className="px-4 py-3 text-[#0F172A] dark:text-white font-medium">{purchase.productName || purchase.product?.name || '—'}</td>
                                         <td className="px-4 py-3 text-[#64748B] dark:text-gray-400 font-mono text-xs">{purchase.batchId || purchase.batch?.id || '—'}</td>
                                         <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">{purchase.quantitySold || purchase.quantity || 0}</td>
-                                        <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">${(purchase.costPriceUsed || purchase.costPriceFifo || purchase.costPrice || 0).toFixed(2)}</td>
-                                        <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">${(purchase.sellingPriceUsed || purchase.sellingPrice || 0).toFixed(2)}</td>
-                                        <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">${(purchase.revenue || 0).toFixed(2)}</td>
-                                        <td className={`px-4 py-3 text-right font-semibold ${(purchase.profit || 0) >= 0 ? 'text-[#16A34A]' : 'text-[#DC2626]'}`}>
-                                          ${(purchase.profit || 0).toFixed(2)}
-                                        </td>
+                                      <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">
+                                        {formatCurrencyNaira(purchase.costPriceUsed || purchase.costPriceFifo || purchase.costPrice || 0)}
+                                      </td>
+                                      <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">
+                                        {formatCurrencyNaira(purchase.sellingPriceUsed || purchase.sellingPrice || 0)}
+                                      </td>
+                                      <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">
+                                        {formatCurrencyNaira(purchase.revenue || 0)}
+                                      </td>
+                                      <td className={`px-4 py-3 text-right font-semibold ${(purchase.profit || 0) >= 0 ? 'text-[#16A34A]' : 'text-[#DC2626]'}`}>
+                                        {formatCurrencyNaira(purchase.profit || 0)}
+                                      </td>
                                       </tr>
                                     ))
                                   ) : (
@@ -4371,10 +4470,10 @@ const InventorySystem = ({ onLogout }) => {
                                     <tr className="bg-[#F9FAFB] dark:bg-[#2A2A2A] font-bold border-t-2 border-[#E5E7EB] dark:border-[#2A2A2A]">
                                       <td colSpan="6" className="px-4 py-3 text-[#0F172A] dark:text-white">Grand Total</td>
                                       <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">
-                                        ${customerPurchases.summary?.totalRevenue?.toFixed(2) || '0.00'}
+                                        {formatCurrencyNaira(customerPurchases.summary?.totalRevenue)}
                                       </td>
                                       <td className={`px-4 py-3 text-right ${(customerPurchases.summary?.totalProfit || 0) >= 0 ? 'text-[#16A34A]' : 'text-[#DC2626]'}`}>
-                                        ${customerPurchases.summary?.totalProfit?.toFixed(2) || '0.00'}
+                                        {formatCurrencyNaira(customerPurchases.summary?.totalProfit)}
                                       </td>
                                     </tr>
                                   </tfoot>
@@ -4474,10 +4573,10 @@ const InventorySystem = ({ onLogout }) => {
                           </p>
                         </div>
                         <div className="bg-white dark:bg-[#1A1A1A] rounded-xl shadow-sm border border-[#E3E8EF] dark:border-[#2A2A2A] p-6">
-                          <p className="text-sm text-[#64748B] dark:text-gray-400 mb-2">Total Inventory Value</p>
-                          <p className="text-2xl font-semibold text-[#0F172A] dark:text-white">
-                            ${inventoryReportData.summary?.totalInventoryValue?.toFixed(2) || '0.00'}
-                          </p>
+                        <p className="text-sm text-[#64748B] dark:text-gray-400 mb-2">Total Inventory Value</p>
+                        <p className="text-2xl font-semibold text-[#0F172A] dark:text-white">
+                          {formatCurrencyNaira(inventoryReportData.summary?.totalInventoryValue)}
+                        </p>
                         </div>
                         <div className="bg-white dark:bg-[#1A1A1A] rounded-xl shadow-sm border border-[#E3E8EF] dark:border-[#2A2A2A] p-6">
                           <p className="text-sm text-[#64748B] dark:text-gray-400 mb-2">Low Stock Items</p>
@@ -4536,8 +4635,8 @@ const InventorySystem = ({ onLogout }) => {
                                 <th className="text-left px-4 py-3 text-xs font-semibold text-[#64748B] dark:text-gray-400 uppercase">Product Name</th>
                                 <th className="text-left px-4 py-3 text-xs font-semibold text-[#64748B] dark:text-gray-400 uppercase">Batch ID</th>
                                 <th className="text-left px-4 py-3 text-xs font-semibold text-[#64748B] dark:text-gray-400 uppercase">Date Added</th>
-                                <th className="text-right px-4 py-3 text-xs font-semibold text-[#64748B] dark:text-gray-400 uppercase">Cost Price</th>
-                                <th className="text-right px-4 py-3 text-xs font-semibold text-[#64748B] dark:text-gray-400 uppercase">Selling Price</th>
+                                <th className="text-right px-4 py-3 text-xs font-semibold text-[#64748B] dark:text-gray-400 uppercase">Cost Price (₦)</th>
+                                <th className="text-right px-4 py-3 text-xs font-semibold text-[#64748B] dark:text-gray-400 uppercase">Selling Price (₦)</th>
                                 <th className="text-right px-4 py-3 text-xs font-semibold text-[#64748B] dark:text-gray-400 uppercase">Qty Added</th>
                                 <th className="text-right px-4 py-3 text-xs font-semibold text-[#64748B] dark:text-gray-400 uppercase">Qty Sold</th>
                                 <th className="text-right px-4 py-3 text-xs font-semibold text-[#64748B] dark:text-gray-400 uppercase">Qty Remaining</th>
@@ -4555,15 +4654,21 @@ const InventorySystem = ({ onLogout }) => {
                                     <td className="px-4 py-3 text-[#0F172A] dark:text-white font-medium">{batch.productName}</td>
                                     <td className="px-4 py-3 text-[#64748B] dark:text-gray-400 font-mono text-xs">{batch.batchId}</td>
                                     <td className="px-4 py-3 text-[#64748B] dark:text-gray-400">{batch.dateAdded || '—'}</td>
-                                    <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">${batch.costPrice?.toFixed(2) || '0.00'}</td>
-                                    <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">${batch.sellingPrice?.toFixed(2) || '0.00'}</td>
+                                    <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">
+                                      {formatCurrencyNaira(batch.costPrice)}
+                                    </td>
+                                    <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">
+                                      {formatCurrencyNaira(batch.sellingPrice)}
+                                    </td>
                                     <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">{batch.quantityAdded || 0}</td>
                                     <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">{batch.quantitySold || 0}</td>
                                     <td className={`px-4 py-3 text-right font-semibold ${batch.isLowStock ? 'text-[#DC2626]' : 'text-[#0F172A] dark:text-white'}`}>
                                       {batch.quantityRemaining || 0}
                                       {batch.isLowStock && <span className="ml-2 text-xs">⚠️</span>}
                                     </td>
-                                    <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white font-semibold">${batch.inventoryValue?.toFixed(2) || '0.00'}</td>
+                                    <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white font-semibold">
+                                      {formatCurrencyNaira(batch.inventoryValue)}
+                                    </td>
                                     <td className="px-4 py-3 text-[#64748B] dark:text-gray-400">{batch.supplier || '—'}</td>
                                   </tr>
                                 ))
@@ -4580,7 +4685,7 @@ const InventorySystem = ({ onLogout }) => {
                                 <tr className="bg-[#F9FAFB] dark:bg-[#2A2A2A] font-bold border-t-2 border-[#E5E7EB] dark:border-[#2A2A2A]">
                                   <td colSpan="8" className="px-4 py-3 text-[#0F172A] dark:text-white">Grand Total</td>
                                   <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">
-                                    ${inventoryReportData.summary?.totalInventoryValue?.toFixed(2) || '0.00'}
+                                    {formatCurrencyNaira(inventoryReportData.summary?.totalInventoryValue)}
                                   </td>
                                   <td></td>
                                 </tr>
@@ -4604,15 +4709,15 @@ const InventorySystem = ({ onLogout }) => {
     {salesReportData && (
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
         {[
-          { label: 'Total Revenue', value: `$${salesReportData.summary?.totalRevenue?.toFixed(2) || '0.00'}`, color: 'text-[#0F172A] dark:text-white' },
-          { label: 'Total COGS (FIFO)', value: `$${salesReportData.summary?.totalCost?.toFixed(2) || '0.00'}`, color: 'text-[#0F172A] dark:text-white' },
-          { label: 'Gross Profit', value: `$${salesReportData.summary?.totalProfit?.toFixed(2) || '0.00'}`, color: (salesReportData.summary?.totalProfit || 0) >= 0 ? 'text-[#16A34A]' : 'text-[#DC2626]' },
-          { label: 'Net Profit', value: `$${salesReportData.summary?.totalProfit?.toFixed(2) || '0.00'}`, color: (salesReportData.summary?.totalProfit || 0) >= 0 ? 'text-[#16A34A]' : 'text-[#DC2626]' },
+          { label: 'Total Revenue', value: formatCurrencyNaira(salesReportData.summary?.totalRevenue), color: 'text-[#0F172A] dark:text-white' },
+          { label: 'Total COGS (FIFO)', value: formatCurrencyNaira(salesReportData.summary?.totalCost), color: 'text-[#0F172A] dark:text-white' },
+          { label: 'Gross Profit', value: formatCurrencyNaira(salesReportData.summary?.totalProfit), color: (salesReportData.summary?.totalProfit || 0) >= 0 ? 'text-[#16A34A]' : 'text-[#DC2626]' },
+          { label: 'Net Profit', value: formatCurrencyNaira(salesReportData.summary?.totalProfit), color: (salesReportData.summary?.totalProfit || 0) >= 0 ? 'text-[#16A34A]' : 'text-[#DC2626]' },
           { label: 'Units Sold', value: salesReportData.summary?.unitsSold || 0, color: 'text-[#0F172A] dark:text-white', fullWidth: true },
         ].map((card, i) => (
           <div key={i} className={`bg-white dark:bg-[#1A1A1A] rounded-xl shadow-sm border border-[#E3E8EF] dark:border-[#2A2A2A] p-4 ${card.fullWidth ? 'col-span-2 md:col-span-1' : ''}`}>
-            <p className="text-xs text-[#64748B] dark:text-gray-400 mb-1 leading-tight">{card.label}</p>
-            <p className={`text-lg md:text-2xl font-semibold ${card.color} leading-tight`}>{card.value}</p>
+                    <p className="text-xs text-[#64748B] dark:text-gray-400 mb-1 leading-tight">{card.label}</p>
+                    <p className={`text-lg md:text-2xl font-semibold ${card.color} leading-tight`}>{card.value}</p>
           </div>
         ))}
       </div>
@@ -4692,9 +4797,15 @@ const InventorySystem = ({ onLogout }) => {
                         if (expandedProductId !== product.product.id) product.batches?.forEach(b => b.batch?.id && fetchPriceHistory(b.batch.id));
                       }}>{product.product.name}</td>
                       <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">{product.totalSold || 0}</td>
-                      <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">${product.totalRevenue?.toFixed(2) || '0.00'}</td>
-                      <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">${product.totalCost?.toFixed(2) || '0.00'}</td>
-                      <td className={`px-4 py-3 text-right font-semibold ${(product.totalProfit || 0) >= 0 ? 'text-[#16A34A]' : 'text-[#DC2626]'}`}>${product.totalProfit?.toFixed(2) || '0.00'}</td>
+                      <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">
+                        {formatCurrencyNaira(product.totalRevenue)}
+                      </td>
+                      <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">
+                        {formatCurrencyNaira(product.totalCost)}
+                      </td>
+                      <td className={`px-4 py-3 text-right font-semibold ${(product.totalProfit || 0) >= 0 ? 'text-[#16A34A]' : 'text-[#DC2626]'}`}>
+                        {formatCurrencyNaira(product.totalProfit)}
+                      </td>
                       <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">{margin.toFixed(1)}%</td>
                       <td className="px-4 py-3 text-right">
                         <button onClick={() => { setExpandedProductId(expandedProductId === product.product.id ? null : product.product.id); if (expandedProductId !== product.product.id) product.batches?.forEach(b => b.batch?.id && fetchPriceHistory(b.batch.id)); }} className="text-[#2FB7A1] hover:underline text-xs">
@@ -4739,13 +4850,21 @@ const InventorySystem = ({ onLogout }) => {
                                                 </div>
                                               </td>
                                               <td className="px-3 py-2 text-[#64748B] dark:text-gray-400">{batch?.dateAdded || '—'}</td>
-                                              <td className="px-3 py-2 text-right text-[#0F172A] dark:text-white">${batch?.costPrice?.toFixed(2) || '0.00'}</td>
-                                              <td className="px-3 py-2 text-right text-[#0F172A] dark:text-white">${batch?.sellingPrice?.toFixed(2) || '0.00'}</td>
+                                              <td className="px-3 py-2 text-right text-[#0F172A] dark:text-white">
+                                                {formatCurrencyNaira(batch?.costPrice)}
+                                              </td>
+                                              <td className="px-3 py-2 text-right text-[#0F172A] dark:text-white">
+                                                {formatCurrencyNaira(batch?.sellingPrice)}
+                                              </td>
                                               <td className="px-3 py-2 text-right text-[#0F172A] dark:text-white">{batchData.totalSold || 0}</td>
-                                              <td className="px-3 py-2 text-right text-[#0F172A] dark:text-white">${batchData.totalRevenue?.toFixed(2) || '0.00'}</td>
-                                              <td className="px-3 py-2 text-right text-[#0F172A] dark:text-white">${batchData.totalCost?.toFixed(2) || '0.00'}</td>
+                                              <td className="px-3 py-2 text-right text-[#0F172A] dark:text-white">
+                                                {formatCurrencyNaira(batchData.totalRevenue)}
+                                              </td>
+                                              <td className="px-3 py-2 text-right text-[#0F172A] dark:text-white">
+                                                {formatCurrencyNaira(batchData.totalCost)}
+                                              </td>
                                               <td className={`px-3 py-2 text-right font-semibold ${(batchData.totalProfit || 0) >= 0 ? 'text-[#16A34A]' : 'text-[#DC2626]'}`}>
-                                                ${batchData.totalProfit?.toFixed(2) || '0.00'}
+                                                {formatCurrencyNaira(batchData.totalProfit)}
                                                 <span className="block text-[10px] font-normal text-[#94A3B8]">excl. pending shipping</span>
                                               </td>
                                             </tr>
@@ -4786,7 +4905,9 @@ const InventorySystem = ({ onLogout }) => {
                                                                 <td className="px-2 py-2 text-[#0F172A] dark:text-white font-medium">{txn.customerName}</td>
                                                                 <td className="px-2 py-2 text-[#64748B] dark:text-gray-400">{txn.dateCreated || '—'}</td>
                                                                 <td className="px-2 py-2 text-right text-[#0F172A] dark:text-white">{txn.quantity}</td>
-                                                                <td className="px-2 py-2 text-right font-semibold text-[#0F172A] dark:text-white">${paid.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                                                                <td className="px-2 py-2 text-right font-semibold text-[#0F172A] dark:text-white">
+                                                                  {formatCurrencyNaira(paid)}
+                                                                </td>
                                                                 <td className="px-2 py-2 text-[#64748B] dark:text-gray-400 capitalize">{txn.paymentMethod || '—'}</td>
                                                                 <td className="px-2 py-2 text-center">
                                                                   <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${ship.status === 'shipped' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' : ship.status === 'transit' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'}`}>
@@ -4800,13 +4921,15 @@ const InventorySystem = ({ onLogout }) => {
                                                         <tfoot>
                                                           <tr className={`font-bold border-t-2 ${darkMode ? 'border-[#1f2937]' : 'border-[#E3E8EF]'}`}>
                                                             <td colSpan="4" className="px-2 py-2 text-[#0F172A] dark:text-white">Total</td>
-                                                            <td className="px-2 py-2 text-right text-[#0F172A] dark:text-white">
-                                                              ${batchTransactions.reduce((sum, txn) => {
-                                                                const prod = inventory.find(p => p.id === txn.productId);
-                                                                const base = prod ? (prod.price || 0) * (txn.quantity || 0) : 0;
-                                                                return sum + (txn.amountPaid != null ? txn.amountPaid : base);
-                                                              }, 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                                                            </td>
+                                      <td className="px-2 py-2 text-right text-[#0F172A] dark:text-white">
+                                        {formatCurrencyNaira(
+                                          batchTransactions.reduce((sum, txn) => {
+                                            const prod = inventory.find(p => p.id === txn.productId);
+                                            const base = prod ? (prod.price || 0) * (txn.quantity || 0) : 0;
+                                            return sum + (txn.amountPaid != null ? txn.amountPaid : base);
+                                          }, 0)
+                                        )}
+                                      </td>
                                                             <td colSpan="2"></td>
                                                           </tr>
                                                         </tfoot>
@@ -4832,9 +4955,9 @@ const InventorySystem = ({ onLogout }) => {
                               <h4 className="font-semibold text-[#0F172A] dark:text-white mb-4">Profit & Loss Overview</h4>
                               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                 {[
-                                  { label: 'Total Revenue', value: `$${product.totalRevenue?.toFixed(2) || '0.00'}`, color: '' },
-                                  { label: 'Total COGS (FIFO)', value: `$${product.totalCost?.toFixed(2) || '0.00'}`, color: '' },
-                                  { label: 'Gross Profit', value: `$${product.totalProfit?.toFixed(2) || '0.00'}`, color: (product.totalProfit || 0) >= 0 ? 'text-[#16A34A]' : 'text-[#DC2626]' },
+                                  { label: 'Total Revenue', value: formatCurrencyNaira(product.totalRevenue), color: '' },
+                                  { label: 'Total COGS (FIFO)', value: formatCurrencyNaira(product.totalCost), color: '' },
+                                  { label: 'Gross Profit', value: formatCurrencyNaira(product.totalProfit), color: (product.totalProfit || 0) >= 0 ? 'text-[#16A34A]' : 'text-[#DC2626]' },
                                   { label: 'Margin', value: `${margin.toFixed(1)}%`, color: margin >= 0 ? 'text-[#16A34A]' : 'text-[#DC2626]' },
                                 ].map((item, i) => (
                                   <div key={i}>
@@ -4974,7 +5097,9 @@ const InventorySystem = ({ onLogout }) => {
                                           </div>
                                           <div className="flex justify-between mt-1.5">
                                             <span className={`text-[10px] ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>Qty: {txn.quantity} · {txn.paymentMethod || '—'}</span>
-                                            <span className={`text-xs font-bold ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>${paid.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                                            <span className={`text-xs font-bold ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>
+                                              {formatCurrencyNaira(paid)}
+                                            </span>
                                           </div>
                                         </div>
                                       );
@@ -5133,6 +5258,147 @@ const InventorySystem = ({ onLogout }) => {
                           </tfoot>
                         </table>
                       </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Stock Movement Report */}
+                {activeReportTab === 'stockMovement' && (
+                  <div>
+                    <div className="bg-white dark:bg-[#1A1A1A] rounded-xl shadow-sm border border-[#E3E8EF] dark:border-[#2A2A2A] p-4 mb-6">
+                      <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">From</label>
+                          <input
+                            type="date"
+                            value={stockMovementFromDate}
+                            onChange={(e) => setStockMovementFromDate(e.target.value)}
+                            className="w-full px-3 py-2 rounded-lg text-sm border border-[#E5E7EB] dark:border-[#2A2A2A] focus:ring-2 focus:ring-[#2FB7A1] bg-white dark:bg-[#1A1A1A] text-[#0F172A] dark:text-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">To</label>
+                          <input
+                            type="date"
+                            value={stockMovementToDate}
+                            onChange={(e) => setStockMovementToDate(e.target.value)}
+                            className="w-full px-3 py-2 rounded-lg text-sm border border-[#E5E7EB] dark:border-[#2A2A2A] focus:ring-2 focus:ring-[#2FB7A1] bg-white dark:bg-[#1A1A1A] text-[#0F172A] dark:text-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Product</label>
+                          <select
+                            value={stockMovementProductFilter}
+                            onChange={(e) => setStockMovementProductFilter(e.target.value)}
+                            className="w-full px-3 py-2 rounded-lg text-sm border border-[#E5E7EB] dark:border-[#2A2A2A] focus:ring-2 focus:ring-[#2FB7A1] bg-white dark:bg-[#1A1A1A] text-[#0F172A] dark:text-white"
+                          >
+                            <option value="">All Products</option>
+                            {inventory.map((item) => (
+                              <option key={item.id} value={item.id}>
+                                {item.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Transaction Type</label>
+                          <select
+                            value={stockMovementTypeFilter}
+                            onChange={(e) => setStockMovementTypeFilter(e.target.value)}
+                            className="w-full px-3 py-2 rounded-lg text-sm border border-[#E5E7EB] dark:border-[#2A2A2A] focus:ring-2 focus:ring-[#2FB7A1] bg-white dark:bg-[#1A1A1A] text-[#0F172A] dark:text-white"
+                          >
+                            <option value="all">All</option>
+                            <option value="in">Stock Received</option>
+                            <option value="out">Sale</option>
+                            <option value="adjust">Adjustment</option>
+                          </select>
+                        </div>
+                        <div className="flex items-end">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setStockMovementFromDate('');
+                              setStockMovementToDate('');
+                              setStockMovementProductFilter('');
+                              setStockMovementTypeFilter('all');
+                            }}
+                            className="w-full px-4 py-2 border border-[#E3E8EF] dark:border-[#2A2A2A] rounded-lg text-sm text-[#64748B] dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#2A2A2A] transition"
+                          >
+                            Clear Filters
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-white dark:bg-[#1A1A1A] rounded-xl shadow-sm border border-[#E3E8EF] dark:border-[#2A2A2A] p-6">
+                      {loadingStockMovements ? (
+                        <p className="text-center text-[#64748B] dark:text-gray-400 py-8">
+                          Loading stock movements...
+                        </p>
+                      ) : stockMovements.length === 0 ? (
+                        <p className="text-center text-[#64748B] dark:text-gray-400 py-8">
+                          No stock movement data available
+                        </p>
+                      ) : (
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="border-b border-[#E5E7EB] dark:border-[#2A2A2A] bg-[#F9FAFB] dark:bg-[#2A2A2A]">
+                                <th className="text-left px-4 py-3 text-xs font-semibold text-[#64748B] dark:text-gray-400 uppercase">
+                                  Date
+                                </th>
+                                <th className="text-left px-4 py-3 text-xs font-semibold text-[#64748B] dark:text-gray-400 uppercase">
+                                  Product
+                                </th>
+                                <th className="text-left px-4 py-3 text-xs font-semibold text-[#64748B] dark:text-gray-400 uppercase">
+                                  Transaction Type
+                                </th>
+                                <th className="text-right px-4 py-3 text-xs font-semibold text-[#64748B] dark:text-gray-400 uppercase">
+                                  Quantity Change
+                                </th>
+                                <th className="text-left px-4 py-3 text-xs font-semibold text-[#64748B] dark:text-gray-400 uppercase">
+                                  Batch Number
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {stockMovements.map((mvt, idx) => {
+                                const sign = mvt.direction === 'in' ? '+' : mvt.direction === 'out' ? '-' : '';
+                                const typeLabel =
+                                  mvt.transactionType ||
+                                  (mvt.direction === 'in'
+                                    ? 'Stock Received'
+                                    : mvt.direction === 'out'
+                                    ? 'Sale'
+                                    : 'Adjustment');
+                                return (
+                                  <tr
+                                    key={mvt.id || idx}
+                                    className="border-b border-[#F1F5F9] dark:border-[#2A2A2A] hover:bg-[#F9FAFB] dark:hover:bg-[#2A2A2A]"
+                                  >
+                                    <td className="px-4 py-3 text-[#0F172A] dark:text-white">
+                                      {formatReportDate(mvt.date || mvt.timestamp)}
+                                    </td>
+                                    <td className="px-4 py-3 text-[#0F172A] dark:text-white">
+                                      {mvt.productName || mvt.productId}
+                                    </td>
+                                    <td className="px-4 py-3 text-[#0F172A] dark:text-white">
+                                      {typeLabel}
+                                    </td>
+                                    <td className="px-4 py-3 text-right font-mono text-[#0F172A] dark:text-white">
+                                      {sign}
+                                      {mvt.quantityChange || mvt.quantity || 0}
+                                    </td>
+                                    <td className="px-4 py-3 text-[#64748B] dark:text-gray-400 font-mono text-xs">
+                                      {mvt.batchId || mvt.batchNumber || '—'}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -7260,7 +7526,7 @@ const InventorySystem = ({ onLogout }) => {
                 <p className="text-xs text-[#64748B] font-mono mt-1">ID: {productToEdit.id}</p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-[#64748B] mb-2">
                     Cost per Unit ($)
@@ -7295,6 +7561,21 @@ const InventorySystem = ({ onLogout }) => {
                       required
                       />
                   </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-[#64748B] mb-2">
+                    Current Stock Quantity
+                  </label>
+                  <input
+                    name="editQty"
+                    type="number"
+                    min="0"
+                    defaultValue={productToEdit?.quantity ?? ''}
+                    className="w-full px-4 py-2.5 border border-[#E3E8EF] rounded-lg text-sm focus:ring-2 focus:ring-[#2FB7A1]"
+                  />
+                  <p className="text-xs text-[#64748B] mt-1">
+                    Update the current stock count for this product.
+                  </p>
                 </div>
               </div>
 
@@ -7530,7 +7811,7 @@ const InventorySystem = ({ onLogout }) => {
 
       {selectedOrder && (
         <Modal
-          onClose={() => setSelectedOrder(null)}
+          onClose={() => { setSelectedOrder(null); setSaleProfitBreakdown(null); }}
           title="Order Details"
           size="xl"
           darkMode={darkMode}
@@ -7542,6 +7823,12 @@ const InventorySystem = ({ onLogout }) => {
             const shipping = order.shipping || {};
             const orderTotal = product ? (product.price || 0) * (order.quantity || 0) : 0;
             const amountPaid = order.amountPaid != null ? order.amountPaid : orderTotal;
+
+            const breakdown = saleProfitBreakdown;
+            const totalSalesAmount = breakdown?.summary?.salesAmount ?? amountPaid;
+            const totalProductCost = breakdown?.summary?.productCost ?? 0;
+            const deliveryCost = breakdown?.summary?.deliveryCost ?? (shipping.shippingCost ? parseFloat(shipping.shippingCost) : 0);
+            const netProfit = totalSalesAmount - totalProductCost - deliveryCost;
 
             return (
               <div className="space-y-6">
@@ -7604,7 +7891,7 @@ const InventorySystem = ({ onLogout }) => {
                         Amount Paid
                       </p>
                       <p className={`text-sm font-semibold ${darkMode ? 'text-gray-200' : 'text-[#0F172A]'}`}>
-                        ${amountPaid.toFixed(2)}
+                        {formatCurrencyNaira(amountPaid)}
                       </p>
                     </div>
                   </div>
@@ -7695,7 +7982,7 @@ const InventorySystem = ({ onLogout }) => {
                         <div>
                           <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>Unit Price</p>
                           <p className={darkMode ? 'text-gray-200' : 'text-[#0F172A]'}>
-                            ${product.price}
+                            {formatCurrencyNaira(product.price)}
                           </p>
                         </div>
                       )}
@@ -7727,6 +8014,125 @@ const InventorySystem = ({ onLogout }) => {
                           </p>
                         </div>
                       )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Profit Breakdown (FIFO) */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className={`text-sm font-semibold ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>
+                      Profit Breakdown (FIFO)
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={() => fetchSaleProfitBreakdown(order.id)}
+                      className="px-3 py-1.5 text-xs rounded-lg border border-[#E3E8EF] dark:border-[#2A2A2A] hover:bg-gray-50 dark:hover:bg-[#2A2A2A] text-[#0F172A] dark:text-white"
+                    >
+                      {loadingSaleProfitBreakdown ? 'Loading…' : breakdown ? 'Refresh Breakdown' : 'Load Breakdown'}
+                    </button>
+                  </div>
+
+                  {/* FIFO Cost Breakdown Table */}
+                  <div className={`rounded-lg border ${darkMode ? 'border-[#2A2A2A] bg-[#020617]' : 'border-[#E3E8EF] bg-[#F9FAFB]'}`}>
+                    <div className="px-4 py-3 border-b border-[#E3E8EF] dark:border-[#1F2937] flex items-center justify-between">
+                      <p className={`text-xs font-semibold uppercase tracking-wide ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>
+                        FIFO Cost Breakdown
+                      </p>
+                      <p className="text-xs text-[#64748B] dark:text-gray-400">
+                        Total Qty: {breakdown?.summary?.totalQuantity ?? order.quantity}
+                      </p>
+                    </div>
+                    {loadingSaleProfitBreakdown ? (
+                      <p className="px-4 py-4 text-xs text-[#64748B] dark:text-gray-400">
+                        Loading FIFO breakdown…
+                      </p>
+                    ) : !breakdown || !breakdown.batches || breakdown.batches.length === 0 ? (
+                      <p className="px-4 py-4 text-xs text-[#64748B] dark:text-gray-400">
+                        No detailed FIFO breakdown available for this sale.
+                      </p>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-xs">
+                          <thead>
+                            <tr className={`border-b ${darkMode ? 'border-[#1F2937]' : 'border-[#E3E8EF]'}`}>
+                              <th className="text-left px-3 py-2 text-[#64748B] dark:text-gray-400 font-semibold">Product</th>
+                              <th className="text-left px-3 py-2 text-[#64748B] dark:text-gray-400 font-semibold">Batch No</th>
+                              <th className="text-left px-3 py-2 text-[#64748B] dark:text-gray-400 font-semibold">Batch Date</th>
+                              <th className="text-right px-3 py-2 text-[#64748B] dark:text-gray-400 font-semibold">Qty Picked</th>
+                              <th className="text-right px-3 py-2 text-[#64748B] dark:text-gray-400 font-semibold">Unit Cost</th>
+                              <th className="text-right px-3 py-2 text-[#64748B] dark:text-gray-400 font-semibold">Total Cost</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {breakdown.batches.map((b, idx) => (
+                              <tr key={b.batchId || idx} className={darkMode ? 'border-b border-[#1F2937]' : 'border-b border-[#F1F5F9]'}>
+                                <td className="px-3 py-2 text-[#0F172A] dark:text-white">
+                                  {b.productName || product?.name || order.productId}
+                                </td>
+                                <td className="px-3 py-2 text-[#64748B] dark:text-gray-400 font-mono">
+                                  {b.batchId || '—'}
+                                </td>
+                                <td className="px-3 py-2 text-[#64748B] dark:text-gray-400">
+                                  {formatReportDate(b.batchDate)}
+                                </td>
+                                <td className="px-3 py-2 text-right text-[#0F172A] dark:text-white">
+                                  {b.quantityPicked || b.quantity || 0}
+                                </td>
+                                <td className="px-3 py-2 text-right text-[#0F172A] dark:text-white">
+                                  {formatCurrencyNaira(b.unitCost)}
+                                </td>
+                                <td className="px-3 py-2 text-right text-[#0F172A] dark:text-white font-semibold">
+                                  {formatCurrencyNaira(b.totalCost)}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Profit Computation Table */}
+                  <div className={`rounded-lg border ${darkMode ? 'border-[#2A2A2A] bg-[#020617]' : 'border-[#E3E8EF] bg-white'}`}>
+                    <div className="px-4 py-3 border-b border-[#E3E8EF] dark:border-[#1F2937]">
+                      <p className={`text-xs font-semibold uppercase tracking-wide ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>
+                        Profit Computation
+                      </p>
+                    </div>
+                    <div className="px-4 py-3">
+                      <table className="w-full text-xs">
+                        <tbody>
+                          <tr>
+                            <td className="py-1 text-[#64748B] dark:text-gray-400">Total Sales Amount</td>
+                            <td className="py-1 text-right text-[#0F172A] dark:text-white font-semibold">
+                              {formatCurrencyNaira(totalSalesAmount)}
+                            </td>
+                          </tr>
+                          <tr>
+                            <td className="py-1 text-[#64748B] dark:text-gray-400">Less: Total Product Cost</td>
+                            <td className="py-1 text-right text-[#0F172A] dark:text-white font-semibold">
+                              {formatCurrencyNaira(totalProductCost)}
+                            </td>
+                          </tr>
+                          <tr>
+                            <td className="py-1 text-[#64748B] dark:text-gray-400">Less: Delivery Cost</td>
+                            <td className="py-1 text-right text-[#0F172A] dark:text-white font-semibold">
+                              {formatCurrencyNaira(deliveryCost)}
+                            </td>
+                          </tr>
+                          <tr>
+                            <td className="py-2 text-[#0F172A] dark:text-white font-semibold">Net Profit</td>
+                            <td
+                              className={`py-2 text-right font-semibold ${
+                                netProfit >= 0 ? 'text-[#16A34A]' : 'text-[#DC2626]'
+                              }`}
+                            >
+                              {formatCurrencyNaira(netProfit)}
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
                     </div>
                   </div>
                 </div>
