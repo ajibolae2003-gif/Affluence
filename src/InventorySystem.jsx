@@ -6476,20 +6476,7 @@ const InventorySystem = ({ onLogout }) => {
                     }`}
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-[#64748B] mb-2">
-                    Current Stock Quantity
-                  </label>
-                  <input
-                    name="editQty"
-                    type="number"
-                    min="0"
-                    defaultValue={productToEdit?.quantity ?? ''}
-                    className="w-full px-4 py-3 border border-[#E3E8EF] rounded-lg text-sm focus:ring-2 focus:ring-[#2FB7A1]"
-                  />
-                  <p className="text-xs text-[#64748B] mt-1">Override the current stock count directly.</p>
-                </div>
-
+               
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Product Image (Optional)
