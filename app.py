@@ -914,20 +914,20 @@ def get_orders():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/orders', methods=['POST'])
+@app.route('/api/orders', methods=['POST'])
 def add_order():
     try:
         data = request.json
-        
-        # Validate required fields
+
         if not data:
             return jsonify({'error': 'No data provided'}), 400
-        
+
         required_fields = ['customerName', 'productId', 'quantity', 'address']
         for field in required_fields:
             if field not in data or not data[field]:
                 return jsonify({'error': f'Missing required field: {field}'}), 400
-        
-        # Generate order ID
+
+        # ── Generate order ID ──────────────────────────────────────────────────
         try:
             last_order = Order.query.order_by(Order.id.desc()).first()
             if last_order:
@@ -937,67 +937,73 @@ def add_order():
                 order_id = 'ORD001'
         except Exception as e:
             return jsonify({'error': f'Error generating order ID: {str(e)}'}), 500
-        
-        # Check if product exists
+
+        # ── Validate product ───────────────────────────────────────────────────
         product = Product.query.filter_by(id=data['productId']).first()
         if not product:
             return jsonify({'error': 'Product not found'}), 404
-        
+
         try:
             quantity_requested = int(data['quantity'])
             if quantity_requested <= 0:
                 return jsonify({'error': 'Quantity must be greater than 0'}), 400
         except (ValueError, TypeError):
             return jsonify({'error': 'Invalid quantity value'}), 400
-        
-        # FIFO: Get batches with remaining stock, ordered by date_added (oldest first)
-        batches = Batch.query.filter_by(product_id=data['productId'])\
-            .filter(Batch.quantity_remaining > 0)\
-            .order_by(Batch.date_added.asc()).all()
-        
-        # Check total available stock
+
+        # ── FIFO: load batches oldest-first, only those with stock ─────────────
+        # Each batch tracks its own cost_price separately so FIFO is automatic:
+        # oldest batch cost is consumed first, then next batch, and so on.
+        batches = (
+            Batch.query
+            .filter_by(product_id=data['productId'])
+            .filter(Batch.quantity_remaining > 0)
+            .order_by(Batch.date_added.asc())   # oldest first = FIFO
+            .all()
+        )
+
         total_available = sum(b.quantity_remaining for b in batches)
         if total_available < quantity_requested:
-            return jsonify({'error': f'Insufficient stock. Available: {total_available}, Requested: {quantity_requested}'}), 400
-        
-        # Get current selling price (use latest batch or product default)
-        current_selling_price = batches[-1].selling_price if batches else 0.0
-        
-        # Amount paid (optional)
+            return jsonify({
+                'error': f'Insufficient stock. Available: {total_available}, Requested: {quantity_requested}'
+            }), 400
+
+        # Selling price comes from the LATEST batch (most recent price)
+        latest_batch = (
+            Batch.query
+            .filter_by(product_id=data['productId'])
+            .order_by(Batch.date_added.desc())
+            .first()
+        )
+        selling_price = latest_batch.selling_price if latest_batch else 0.0
+
+        # ── Amount paid ────────────────────────────────────────────────────────
         amount_paid = None
-        if 'amountPaid' in data and data['amountPaid'] not in (None, '', []):
+        if data.get('amountPaid') not in (None, '', []):
             try:
                 amount_paid = float(data['amountPaid'])
             except (ValueError, TypeError):
                 return jsonify({'error': 'Invalid amountPaid value'}), 400
-        
-        # Save or update customer information
+
+        # ── Save / update customer ─────────────────────────────────────────────
+        order_date  = datetime.now(timezone.utc).date()
+        order_total = amount_paid if amount_paid is not None else selling_price * quantity_requested
+
         customer = Customer.query.filter_by(name=data['customerName']).first()
-        order_date = datetime.now(timezone.utc).date()
-        # Use amountPaid if provided; otherwise use current selling price
-        order_total = amount_paid if amount_paid is not None else current_selling_price * quantity_requested
-        
         if customer:
-            # Update existing customer
             customer.total_orders += 1
-            customer.total_spent += order_total
-            if data.get('address') and (not customer.address or customer.address != data.get('address')):
-                customer.address = data['address']
-            if data.get('email') and (not customer.email or customer.email != data.get('email')):
-                customer.email = data.get('email')
-            if data.get('phone') and (not customer.phone or customer.phone != data.get('phone')):
-                customer.phone = data.get('phone')
-            if data.get('username') and (not customer.username or customer.username != data.get('username')):
-                customer.username = data.get('username')
-            if data.get('upline') and (not customer.upline or customer.upline != data.get('upline')):
-                customer.upline = data.get('upline')
-            if data.get('accountNumber'):
-                customer.account_number = data.get('accountNumber')
+            customer.total_spent  += order_total
             customer.last_order_date = order_date
             if not customer.first_order_date:
                 customer.first_order_date = order_date
+            # Update contact info only when provided and different
+            for attr, key in [('address','address'), ('email','email'),
+                               ('phone','phone'), ('username','username'),
+                               ('upline','upline')]:
+                if data.get(key) and getattr(customer, attr) != data[key]:
+                    setattr(customer, attr, data[key])
+            if data.get('accountNumber'):
+                customer.account_number = data['accountNumber']
         else:
-            # Create new customer
             customer = Customer(
                 name=data['customerName'],
                 username=data.get('username'),
@@ -1005,16 +1011,15 @@ def add_order():
                 email=data.get('email'),
                 phone=data.get('phone'),
                 address=data.get('address'),
-                quantity_weight=None,
                 account_number=data.get('accountNumber'),
                 total_orders=1,
                 total_spent=order_total,
                 first_order_date=order_date,
-                last_order_date=order_date
+                last_order_date=order_date,
             )
             db.session.add(customer)
-        
-        # Create order
+
+        # ── Create order record ────────────────────────────────────────────────
         order = Order(
             id=order_id,
             customer_name=data['customerName'],
@@ -1028,105 +1033,121 @@ def add_order():
             amount_paid=amount_paid,
             payment_confirmed=data.get('paymentConfirmed', False),
             status='pending',
-            date_created=order_date
+            date_created=order_date,
         )
         db.session.add(order)
-        
-        # FIFO allocation: Allocate quantity from batches (oldest first)
-        remaining_qty = quantity_requested
-        sales_created = []
-        total_revenue = 0.0
-        total_cost = 0.0
-        
-# In add_order(), keep sale creation simple — no shipping cost yet:
+
+        # ── FIFO allocation ────────────────────────────────────────────────────
+        # Walk through batches oldest-to-newest.
+        # For each batch we take as many units as needed (up to what remains in
+        # that batch) and create one Sale row per batch consumed.
+        # Example: sell 30 units where B001 has 10 and B002 has 20
+        #   → Sale 1: batch=B001, qty=10, cost=B001.cost_price
+        #   → Sale 2: batch=B002, qty=20, cost=B002.cost_price
+        # Each batch's quantity_remaining and quantity_sold are updated
+        # independently so reports always show the correct per-batch breakdown.
+
+        remaining_qty  = quantity_requested
+        sales_created  = []
+        total_revenue  = 0.0
+        total_cost     = 0.0
+        sale_index     = 1
+
         for batch in batches:
             if remaining_qty <= 0:
                 break
-            
-            qty_from_batch = min(remaining_qty, batch.quantity_remaining)
-            
-            revenue = qty_from_batch * current_selling_price
-            product_cost = qty_from_batch * batch.cost_price
-            profit = revenue - product_cost  # shipping not known yet
-            
-            sale_id = f'SALE{order_id.replace("ORD", "")}-{len(sales_created) + 1}'
-            
+
+            # Take as much as this batch can supply
+            qty_from_this_batch = min(remaining_qty, batch.quantity_remaining)
+
+            # Revenue uses the current selling price for every unit
+            revenue      = qty_from_this_batch * selling_price
+            # Cost uses THIS batch's own cost price (the FIFO part)
+            product_cost = qty_from_this_batch * batch.cost_price
+            profit       = revenue - product_cost
+
             sale = Sale(
-                id=sale_id,
-                batch_id=batch.id,
+                id=f'SALE{order_id.replace("ORD", "")}-{sale_index}',
+                batch_id=batch.id,                      # links to the correct batch
                 order_id=order_id,
                 customer_name=data['customerName'],
-                quantity_sold=qty_from_batch,
-                selling_price_used=current_selling_price,
-                cost_price_used=batch.cost_price,
+                quantity_sold=qty_from_this_batch,
+                selling_price_used=selling_price,
+                cost_price_used=batch.cost_price,       # each sale records its own FIFO cost
                 revenue=revenue,
                 cost=product_cost,
                 profit=profit,
-                date_sold=order_date
+                date_sold=order_date,
             )
             db.session.add(sale)
             sales_created.append(sale.to_dict())
-            
-            batch.quantity_remaining -= qty_from_batch
-            batch.quantity_sold += qty_from_batch
-            
-            total_revenue += revenue
-            total_cost += product_cost
-            remaining_qty -= qty_from_batch
-        
-        # Create shipping entry
+
+            # Deduct ONLY from this batch — other batches are untouched
+            batch.quantity_remaining -= qty_from_this_batch
+            batch.quantity_sold      += qty_from_this_batch
+
+            total_revenue  += revenue
+            total_cost     += product_cost
+            remaining_qty  -= qty_from_this_batch
+            sale_index     += 1
+
+        # ── Shipping cost distribution (if provided upfront) ──────────────────
+        # Shipping cost is distributed proportionally across the sale rows so
+        # per-batch profit figures in reports include their share of delivery cost.
+        if data.get('shippingCost'):
+            try:
+                shipping_cost_total = float(data['shippingCost'])
+                if shipping_cost_total > 0 and sales_created:
+                    for sale_dict in sales_created:
+                        # Re-fetch the sale object we just added
+                        sale_obj = next(
+                            (s for s in db.session.new if isinstance(s, Sale) and s.id == sale_dict['id']),
+                            None
+                        )
+                        if sale_obj:
+                            share = (sale_obj.quantity_sold / quantity_requested) * shipping_cost_total
+                            sale_obj.cost   += share
+                            sale_obj.profit  = sale_obj.revenue - sale_obj.cost
+            except (ValueError, TypeError):
+                pass  # shipping cost is optional; don't block the order
+
+        # ── Create shipping entry ──────────────────────────────────────────────
         shipping = Shipping(
             id=order_id,
             customer_name=data['customerName'],
             product_id=data['productId'],
             quantity=quantity_requested,
             address=data['address'],
-            status='pending'
+            status='pending',
         )
         db.session.add(shipping)
-        
-        # Create initial shipping history entry
+
         initial_history = ShippingHistory(
             shipping_id=order_id,
             status='pending',
-            notes='Order created and added to shipping queue'
+            notes='Order created and added to shipping queue',
         )
         db.session.add(initial_history)
 
-        if 'shippingCost' in data and data['shippingCost']:
-            new_shipping_cost = float(data['shippingCost']) if data['shippingCost'] else 0.0
-            
-            # Find all sales for this order and recalculate profit with shipping cost
-            order = Order.query.filter_by(id=order_id).first()
-            if order:
-                order_sales = Sale.query.filter_by(order_id=order_id).all()
-                total_units = sum(s.quantity_sold for s in order_sales)
-                
-                for sale in order_sales:
-                    # Distribute shipping cost proportionally by quantity
-                    sale_shipping_share = (sale.quantity_sold / total_units * new_shipping_cost) if total_units > 0 else 0
-                    sale.cost = (sale.quantity_sold * sale.cost_price_used) + sale_shipping_share
-                    sale.profit = sale.revenue - sale.cost
-        
         db.session.commit()
-        
+
         return jsonify({
             'message': 'Order created successfully',
             'order': order.to_dict(),
             'sales': sales_created,
             'totalRevenue': total_revenue,
             'totalCost': total_cost,
-            'totalProfit': total_revenue - total_cost
+            'totalProfit': total_revenue - total_cost,
         }), 201
+
     except ValueError as e:
         db.session.rollback()
         return jsonify({'error': f'Invalid value: {str(e)}'}), 400
     except Exception as e:
         db.session.rollback()
         import traceback
-        error_details = traceback.format_exc()
-        print(f"Error adding order: {error_details}")
-        return jsonify({'error': str(e), 'details': error_details}), 500
+        print(f"Error adding order: {traceback.format_exc()}")
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/shipping', methods=['GET'])
 def get_shipping():
@@ -1215,6 +1236,7 @@ def trigger_email_report():
         return jsonify({'message': 'Reports sent successfully'}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
 
         
 @app.route('/api/reports/sales/pdf', methods=['GET'])
@@ -1512,7 +1534,7 @@ def export_sales_pdf():
         txn_rows = [txn_header]
 
         for s in sales:
-            batch = InventoryBatch.query.get(s.batch_id)
+            batch = Batch.query.get(s.batch_id)
             product = Product.query.get(batch.product_id) if batch else None
             pname = product.name if product else 'Unknown'
             date_str = s.date_sold.strftime('%d/%m/%Y') if s.date_sold else '-'

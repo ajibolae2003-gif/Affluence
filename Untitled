@@ -1,0 +1,39 @@
+def allocate_fifo(product_id, quantity_to_sell):
+    """
+    Consume stock from oldest batch first.
+    Returns list of allocations: [{batch_id, qty_picked, unit_cost}]
+    """
+    # Get all batches with remaining stock, oldest first
+    batches = Batch.query.filter_by(
+        product_id=product_id
+    ).filter(
+        Batch.quantity_remaining > 0
+    ).order_by(
+        Batch.date_added.asc()  # oldest first = FIFO
+    ).all()
+
+    remaining = quantity_to_sell
+    allocations = []
+
+    for batch in batches:
+        if remaining <= 0:
+            break
+
+        # How much can we take from this batch?
+        take = min(batch.quantity_remaining, remaining)
+
+        allocations.append({
+            'batch_id':   batch.id,
+            'batch':      batch,
+            'qty_picked': take,
+            'unit_cost':  batch.cost_price,
+        })
+
+        batch.quantity_remaining -= take
+        batch.quantity_sold      += take
+        remaining                -= take
+
+    if remaining > 0:
+        raise ValueError(f"Not enough stock. Short by {remaining} units.")
+
+    return allocations
