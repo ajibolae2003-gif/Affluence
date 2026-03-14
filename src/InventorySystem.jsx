@@ -504,42 +504,61 @@ const InventorySystem = ({ onLogout }) => {
       setSaleProfitBreakdown(null);
       const result = await apiCall(`/reports/sales/${encodeURIComponent(orderId)}/profit-breakdown`);
       if (result.ok) {
-        setSaleProfitBreakdown(result.data || null);
+        const raw = result.data;
+  
+        // Transform the sales report shape into the breakdown shape the panel expects
+        const batches = [];
+        let totalQty      = 0;
+        let totalRevenue  = 0;
+        let totalCost     = 0;
+        let customerName  = '';
+        let dateSold      = '';
+  
+        (raw.products || []).forEach(product => {
+          (product.batches || []).forEach(batchData => {
+            (batchData.sales || []).forEach(sale => {
+              if (!customerName) customerName = sale.customerName || '';
+              if (!dateSold)     dateSold     = sale.dateSold || '';
+              totalQty     += sale.quantitySold || 0;
+              totalRevenue += sale.revenue || 0;
+              totalCost    += sale.cost || 0;
+              batches.push({
+                productName:    product.product?.name || batchData.batch?.productId || '—',
+                batchId:        batchData.batch?.id || sale.batchId || '—',
+                batchDate:      batchData.batch?.dateAdded || '',
+                quantityPicked: sale.quantitySold || 0,
+                unitCost:       sale.costPriceUsed || batchData.batch?.costPrice || 0,
+                totalCost:      sale.cost || 0,
+              });
+            });
+          });
+        });
+  
+        // Get delivery cost from the matching order
+        const matchedOrder = orders.find(o => o.id === orderId);
+        const deliveryCost = parseFloat(matchedOrder?.shipping?.shippingCost || 0);
+  
+        const transformed = {
+          orderId,
+          date:         dateSold,
+          customerName,
+          batches,
+          summary: {
+            totalQuantity: totalQty,
+            salesAmount:   totalRevenue,
+            productCost:   totalCost,
+            deliveryCost,
+          },
+        };
+  
+        setSaleProfitBreakdown(transformed);
       } else {
         console.error('Failed to fetch sale profit breakdown:', result.error);
-        if (result.networkError) {
-          showToast('Cannot connect to backend. Please ensure Flask is running.');
-        }
       }
     } catch (error) {
       console.error('Error fetching sale profit breakdown:', error);
     } finally {
       setLoadingSaleProfitBreakdown(false);
-    }
-  };
-  const fetchInventorySalesReportForProduct = async (productId) => {
-    try {
-      setLoadingInventorySalesReport(true);
-      setInventoryReportSelectedProductId(productId);
-      const params = new URLSearchParams();
-      if (productId) params.append('productId', productId);
-      if (reportDateFrom) params.append('dateFrom', reportDateFrom);
-      if (reportDateTo) params.append('dateTo', reportDateTo);
-      const queryString = params.toString();
-      const endpoint = `/reports/sales${queryString ? '?' + queryString : ''}`;
-      const result = await apiCall(endpoint);
-      if (result.ok) {
-        setInventoryReportSalesData(result.data);
-      } else {
-        console.error('Failed to fetch embedded sales report:', result.error);
-        if (result.networkError) {
-          showToast('Cannot connect to backend. Please ensure Flask is running.');
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching embedded sales report:', error);
-    } finally {
-      setLoadingInventorySalesReport(false);
     }
   };
 
