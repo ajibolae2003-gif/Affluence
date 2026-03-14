@@ -4548,158 +4548,319 @@ const InventorySystem = ({ onLogout }) => {
                   )}
 
                 {/* Inventory Report */}
-                {activeReportTab === 'inventory' && (
-                  <div>
-                    {/* Summary Cards */}
-                    {inventoryReportData && (
-                      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
-                        <div className="bg-white dark:bg-[#1A1A1A] rounded-xl shadow-sm border border-[#E3E8EF] dark:border-[#2A2A2A] p-6">
-                          <p className="text-sm text-[#64748B] dark:text-gray-400 mb-2">Total Products</p>
-                          <p className="text-2xl font-semibold text-[#0F172A] dark:text-white">
-                            {inventoryReportData.summary?.totalProducts || 0}
-                          </p>
-                        </div>
-                        <div className="bg-white dark:bg-[#1A1A1A] rounded-xl shadow-sm border border-[#E3E8EF] dark:border-[#2A2A2A] p-6">
-                          <p className="text-sm text-[#64748B] dark:text-gray-400 mb-2">Total Batches</p>
-                          <p className="text-2xl font-semibold text-[#0F172A] dark:text-white">
-                            {inventoryReportData.summary?.totalBatches || 0}
-                          </p>
-                        </div>
-                        <div className="bg-white dark:bg-[#1A1A1A] rounded-xl shadow-sm border border-[#E3E8EF] dark:border-[#2A2A2A] p-6">
-                          <p className="text-sm text-[#64748B] dark:text-gray-400 mb-2">Total Units in Stock</p>
-                          <p className="text-2xl font-semibold text-[#0F172A] dark:text-white">
-                            {inventoryReportData.summary?.totalUnitsInStock || 0}
-                          </p>
-                        </div>
-                        <div className="bg-white dark:bg-[#1A1A1A] rounded-xl shadow-sm border border-[#E3E8EF] dark:border-[#2A2A2A] p-6">
-                        <p className="text-sm text-[#64748B] dark:text-gray-400 mb-2">Total Inventory Value</p>
-                        <p className="text-2xl font-semibold text-[#0F172A] dark:text-white">
-                          {formatCurrencyNaira(inventoryReportData.summary?.totalInventoryValue)}
-                        </p>
-                        </div>
-                        <div className="bg-white dark:bg-[#1A1A1A] rounded-xl shadow-sm border border-[#E3E8EF] dark:border-[#2A2A2A] p-6">
-                          <p className="text-sm text-[#64748B] dark:text-gray-400 mb-2">Low Stock Items</p>
-                          <p className={`text-2xl font-semibold ${(inventoryReportData.summary?.lowStockCount || 0) > 0 ? 'text-[#DC2626]' : 'text-[#0F172A] dark:text-white'}`}>
-                            {inventoryReportData.summary?.lowStockCount || 0}
-                          </p>
-                          {inventoryReportData.summary?.lowStockThreshold && (
-                            <p className="text-xs text-[#64748B] dark:text-gray-400 mt-1">
-                              Threshold: &lt; {inventoryReportData.summary.lowStockThreshold}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    )}
+                {activeReportTab === 'inventory' && (() => {
+  // ── Data processing outside JSX ──
+  const products = inventoryReportData?.products || [];
+  const batches  = inventoryReportData?.batches  || [];
 
-                    {/* Inventory Table */}
-                    {loadingInventoryReport ? (
-                      <div className="text-center py-8 text-[#64748B] dark:text-gray-400">Loading inventory report...</div>
-                    ) : inventoryReportData && inventoryReportData.batches ? (
-                      <div className="bg-white dark:bg-[#1A1A1A] rounded-xl shadow-sm border border-[#E3E8EF] dark:border-[#2A2A2A] p-6 mb-6">
-                        <div className="flex items-center justify-between mb-4">
-                          <h3 className="font-semibold text-lg text-[#0F172A] dark:text-white">Batch-Level Inventory</h3>
-                          <button
-                            onClick={() => {
-                              const csv = [
-                                ['Product Name', 'Batch ID', 'Date Added', 'Cost Price', 'Selling Price', 'Qty Added', 'Qty Sold', 'Qty Remaining', 'Inventory Value', 'Supplier'].join(','),
-                                ...inventoryReportData.batches.map(b => [
-                                  b.productName,
-                                  b.batchId,
-                                  b.dateAdded || '',
-                                  b.costPrice,
-                                  b.sellingPrice,
-                                  b.quantityAdded,
-                                  b.quantitySold,
-                                  b.quantityRemaining,
-                                  b.inventoryValue,
-                                  b.supplier || ''
-                                ].join(','))
-                              ].join('\n');
-                              const blob = new Blob([csv], { type: 'text/csv' });
-                              const url = window.URL.createObjectURL(blob);
-                              const a = document.createElement('a');
-                              a.href = url;
-                              a.download = `inventory-report-${new Date().toISOString().split('T')[0]}.csv`;
-                              a.click();
-                            }}
-                            className="px-4 py-2 text-sm bg-[#2FB7A1] text-white rounded-lg hover:bg-[#28a085] transition"
-                          >
-                            Export CSV
-                          </button>
-                        </div>
-                        <div className="overflow-x-auto">
-                          <table className="w-full text-sm">
-                            <thead>
-                              <tr className="border-b border-[#E5E7EB] dark:border-[#2A2A2A] bg-[#F9FAFB] dark:bg-[#2A2A2A]">
-                                <th className="text-left px-4 py-3 text-xs font-semibold text-[#64748B] dark:text-gray-400 uppercase">Product Name</th>
-                                <th className="text-left px-4 py-3 text-xs font-semibold text-[#64748B] dark:text-gray-400 uppercase">Batch ID</th>
-                                <th className="text-left px-4 py-3 text-xs font-semibold text-[#64748B] dark:text-gray-400 uppercase">Date Added</th>
-                                <th className="text-right px-4 py-3 text-xs font-semibold text-[#64748B] dark:text-gray-400 uppercase">Cost Price (₦)</th>
-                                <th className="text-right px-4 py-3 text-xs font-semibold text-[#64748B] dark:text-gray-400 uppercase">Selling Price (₦)</th>
-                                <th className="text-right px-4 py-3 text-xs font-semibold text-[#64748B] dark:text-gray-400 uppercase">Qty Added</th>
-                                <th className="text-right px-4 py-3 text-xs font-semibold text-[#64748B] dark:text-gray-400 uppercase">Qty Sold</th>
-                                <th className="text-right px-4 py-3 text-xs font-semibold text-[#64748B] dark:text-gray-400 uppercase">Qty Remaining</th>
-                                <th className="text-right px-4 py-3 text-xs font-semibold text-[#64748B] dark:text-gray-400 uppercase">Inventory Value</th>
-                                <th className="text-left px-4 py-3 text-xs font-semibold text-[#64748B] dark:text-gray-400 uppercase">Supplier</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {inventoryReportData.batches.length > 0 ? (
-                                inventoryReportData.batches.map((batch, idx) => (
-                                  <tr 
-                                    key={batch.batchId || idx} 
-                                    className={`border-b border-[#F1F5F9] dark:border-[#2A2A2A] hover:bg-[#F9FAFB] dark:hover:bg-[#2A2A2A] ${batch.isLowStock ? 'bg-red-50 dark:bg-red-900/10' : ''}`}
-                                  >
-                                    <td className="px-4 py-3 text-[#0F172A] dark:text-white font-medium">{batch.productName}</td>
-                                    <td className="px-4 py-3 text-[#64748B] dark:text-gray-400 font-mono text-xs">{batch.batchId}</td>
-                                    <td className="px-4 py-3 text-[#64748B] dark:text-gray-400">{batch.dateAdded || '—'}</td>
-                                    <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">
-                                      {formatCurrencyNaira(batch.costPrice)}
-                                    </td>
-                                    <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">
-                                      {formatCurrencyNaira(batch.sellingPrice)}
-                                    </td>
-                                    <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">{batch.quantityAdded || 0}</td>
-                                    <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">{batch.quantitySold || 0}</td>
-                                    <td className={`px-4 py-3 text-right font-semibold ${batch.isLowStock ? 'text-[#DC2626]' : 'text-[#0F172A] dark:text-white'}`}>
-                                      {batch.quantityRemaining || 0}
-                                      {batch.isLowStock && <span className="ml-2 text-xs">⚠️</span>}
-                                    </td>
-                                    <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white font-semibold">
-                                      {formatCurrencyNaira(batch.inventoryValue)}
-                                    </td>
-                                    <td className="px-4 py-3 text-[#64748B] dark:text-gray-400">{batch.supplier || '—'}</td>
-                                  </tr>
-                                ))
-                              ) : (
-                                <tr>
-                                  <td colSpan="10" className="px-4 py-8 text-center text-[#64748B] dark:text-gray-400">
-                                    No inventory data available
-                                  </td>
-                                </tr>
-                              )}
-                            </tbody>
-                            {inventoryReportData.batches.length > 0 && (
-                              <tfoot>
-                                <tr className="bg-[#F9FAFB] dark:bg-[#2A2A2A] font-bold border-t-2 border-[#E5E7EB] dark:border-[#2A2A2A]">
-                                  <td colSpan="8" className="px-4 py-3 text-[#0F172A] dark:text-white">Grand Total</td>
-                                  <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">
-                                    {formatCurrencyNaira(inventoryReportData.summary?.totalInventoryValue)}
-                                  </td>
-                                  <td></td>
-                                </tr>
-                              </tfoot>
-                            )}
-                          </table>
-                        </div>
+  // Build product-level summary from batches
+  const productSummary = {};
+  batches.forEach(b => {
+    const pid = b.productId || b.productName;
+    if (!productSummary[pid]) {
+      productSummary[pid] = {
+        name:          b.productName,
+        totalReceived: 0,
+        totalSold:     0,
+        balance:       0,
+      };
+    }
+    productSummary[pid].totalReceived += b.quantityAdded    || 0;
+    productSummary[pid].totalSold     += b.quantitySold     || 0;
+    productSummary[pid].balance       += b.quantityRemaining || 0;
+  });
+  const productRows = Object.values(productSummary);
+
+  // Grand totals
+  const grandReceived = batches.reduce((s, b) => s + (b.quantityAdded     || 0), 0);
+  const grandSold     = batches.reduce((s, b) => s + (b.quantitySold      || 0), 0);
+  const grandBalance  = batches.reduce((s, b) => s + (b.quantityRemaining || 0), 0);
+  const grandValue    = batches.reduce((s, b) => s + (b.inventoryValue    || 0), 0);
+
+  return (
+    <div>
+      {/* Summary Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        {[
+          { label: 'Total Products',    value: inventoryReportData?.summary?.totalProducts    || productRows.length },
+          { label: 'Total Batches',     value: inventoryReportData?.summary?.totalBatches     || batches.length },
+          { label: 'Units in Stock',    value: (inventoryReportData?.summary?.totalUnitsInStock ?? grandBalance).toLocaleString() },
+          { label: 'Inventory Value',   value: formatCurrencyNaira(inventoryReportData?.summary?.totalInventoryValue ?? grandValue),
+            highlight: true },
+        ].map((card, i) => (
+          <div key={i} className={`rounded-xl border p-5 ${darkMode ? 'bg-[#111827] border-[#1f2937]' : 'bg-white border-[#E3E8EF]'}`}>
+            <p className={`text-xs font-semibold uppercase tracking-wide mb-1 ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>{card.label}</p>
+            <p className={`text-2xl font-bold ${card.highlight ? 'text-[#2FB7A1]' : darkMode ? 'text-white' : 'text-[#0F172A]'}`}>{card.value}</p>
+          </div>
+        ))}
+      </div>
+
+      {loadingInventoryReport ? (
+        <div className={`rounded-xl border p-12 text-center ${darkMode ? 'bg-[#111827] border-[#1f2937]' : 'bg-white border-[#E3E8EF]'}`}>
+          <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>Loading inventory report…</p>
+        </div>
+      ) : !inventoryReportData ? (
+        <div className={`rounded-xl border p-12 text-center ${darkMode ? 'bg-[#111827] border-[#1f2937]' : 'bg-white border-[#E3E8EF]'}`}>
+          <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>No inventory data available.</p>
+        </div>
+      ) : (
+        <>
+          {/* ── Section 1: Product Summary ── */}
+          <div className={`rounded-xl border overflow-hidden mb-6 ${darkMode ? 'bg-[#111827] border-[#1f2937]' : 'bg-white border-[#E3E8EF]'}`}>
+            <div className={`flex items-center justify-between px-5 py-3 border-b ${darkMode ? 'bg-[#0d1117] border-[#1f2937]' : 'bg-[#F9FAFB] border-[#E3E8EF]'}`}>
+              <div>
+                <p className={`text-sm font-semibold ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>Inventory Summary</p>
+                <p className={`text-xs mt-0.5 ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>Per-product stock overview</p>
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className={`${darkMode ? 'bg-[#0d1117]' : 'bg-[#F9FAFB]'}`}>
+                    {['Product', 'Total Received', 'Total Sold', 'Stock Balance', 'Status'].map((h, i) => (
+                      <th key={i} className={`px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wide border-b ${darkMode ? 'text-gray-500 border-[#1f2937]' : 'text-[#94A3B8] border-[#E3E8EF]'} ${i >= 1 && i <= 3 ? 'text-right' : ''}`}>
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {productRows.length === 0 ? (
+                    <tr><td colSpan="5" className={`py-10 text-center text-sm ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>No products found</td></tr>
+                  ) : productRows.map((row, idx) => {
+                    const pct      = row.totalReceived > 0 ? (row.balance / row.totalReceived) * 100 : 0;
+                    const isOut    = row.balance === 0;
+                    const isLow    = !isOut && row.balance < 50;
+                    const statusCfg = isOut
+                      ? { label: 'Out of Stock', cls: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' }
+                      : isLow
+                      ? { label: 'Low Stock',    cls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' }
+                      : { label: 'In Stock',     cls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' };
+                    const barColor = isOut ? 'bg-red-500' : isLow ? 'bg-amber-400' : 'bg-emerald-500';
+
+                    return (
+                      <tr key={idx} className={`border-b transition ${darkMode ? 'border-[#0d1117] hover:bg-[#0d1117]' : 'border-[#F8FAFC] hover:bg-[#F8FAFC]'}`}>
+                        <td className={`px-4 py-3 font-semibold ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>{row.name}</td>
+                        <td className={`px-4 py-3 text-right tabular-nums ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>{row.totalReceived.toLocaleString()}</td>
+                        <td className={`px-4 py-3 text-right tabular-nums ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>{row.totalSold.toLocaleString()}</td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <div className={`w-16 h-1.5 rounded-full overflow-hidden ${darkMode ? 'bg-[#1f2937]' : 'bg-[#E3E8EF]'}`}>
+                              <div className={`h-full rounded-full ${barColor}`} style={{ width: `${Math.min(pct, 100)}%` }} />
+                            </div>
+                            <span className={`tabular-nums font-semibold ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>{row.balance.toLocaleString()}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${statusCfg.cls}`}>{statusCfg.label}</span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+                <tfoot>
+                  <tr className={`border-t-2 text-xs font-semibold ${darkMode ? 'bg-[#0d1117] border-[#1f2937]' : 'bg-[#F9FAFB] border-[#E3E8EF]'}`}>
+                    <td className={`px-4 py-3 ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>Total ({productRows.length} products)</td>
+                    <td className={`px-4 py-3 text-right tabular-nums ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>{grandReceived.toLocaleString()}</td>
+                    <td className={`px-4 py-3 text-right tabular-nums ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>{grandSold.toLocaleString()}</td>
+                    <td className={`px-4 py-3 text-right tabular-nums text-[#2FB7A1]`}>{grandBalance.toLocaleString()}</td>
+                    <td />
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+
+          {/* ── Section 2: Batch Details ── */}
+          <div className={`rounded-xl border overflow-hidden ${darkMode ? 'bg-[#111827] border-[#1f2937]' : 'bg-white border-[#E3E8EF]'}`}>
+            <div className={`flex items-center justify-between px-5 py-3 border-b ${darkMode ? 'bg-[#0d1117] border-[#1f2937]' : 'bg-[#F9FAFB] border-[#E3E8EF]'}`}>
+              <div>
+                <p className={`text-sm font-semibold ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>Batch Details</p>
+                <p className={`text-xs mt-0.5 ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>Per-batch stock breakdown</p>
+              </div>
+              <button
+                onClick={() => {
+                  const csv = [
+                    ['Batch No', 'Date Received', 'Product', 'Qty Received', 'Qty Sold', 'Balance', 'Cost of Purchase', 'Logistics', 'Unit Cost', 'Inventory Value', 'Supplier'].join(','),
+                    ...batches.map(b => [
+                      b.batchId,
+                      b.dateAdded || '',
+                      b.productName,
+                      b.quantityAdded    || 0,
+                      b.quantitySold     || 0,
+                      b.quantityRemaining || 0,
+                      (b.costPrice || 0) * (b.quantityAdded || 0),
+                      b.shippingCost     || 0,
+                      b.costPrice        || 0,
+                      b.inventoryValue   || 0,
+                      b.supplier         || '',
+                    ].join(','))
+                  ].join('\n');
+                  const blob = new Blob([csv], { type: 'text/csv' });
+                  const url  = window.URL.createObjectURL(blob);
+                  const a    = document.createElement('a');
+                  a.href     = url;
+                  a.download = `inventory-batch-report-${new Date().toISOString().split('T')[0]}.csv`;
+                  a.click();
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#2FB7A1] text-white rounded-lg hover:bg-[#28a085] transition"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Export CSV
+              </button>
+            </div>
+
+            {/* Desktop */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className={`${darkMode ? 'bg-[#0d1117]' : 'bg-[#F9FAFB]'}`}>
+                    {[
+                      { h: 'Batch No',         right: false },
+                      { h: 'Date Received',    right: false },
+                      { h: 'Product',          right: false },
+                      { h: 'Supplier',         right: false },
+                      { h: 'Qty Received',     right: true  },
+                      { h: 'Qty Sold',         right: true  },
+                      { h: 'Balance',          right: true  },
+                      { h: 'Cost of Purchase', right: true  },
+                      { h: 'Logistics',        right: true  },
+                      { h: 'Unit Cost',        right: true  },
+                      { h: 'Stock Value',      right: true  },
+                    ].map((col, i) => (
+                      <th key={i} className={`px-4 py-3 text-[10px] font-bold uppercase tracking-wide border-b ${darkMode ? 'text-gray-500 border-[#1f2937]' : 'text-[#94A3B8] border-[#E3E8EF]'} ${col.right ? 'text-right' : 'text-left'}`}>
+                        {col.h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {batches.length === 0 ? (
+                    <tr><td colSpan="11" className={`py-10 text-center text-sm ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>No batch data available</td></tr>
+                  ) : batches.map((b, idx) => {
+                    const isOut  = (b.quantityRemaining || 0) === 0;
+                    const isLow  = !isOut && (b.quantityRemaining || 0) < 50;
+                    const costOfPurchase = (b.costPrice || 0) * (b.quantityAdded || 0);
+
+                    return (
+                      <tr key={b.batchId || idx}
+                        className={`border-b transition ${b.isLowStock ? (darkMode ? 'bg-red-900/10' : 'bg-red-50') : ''} ${darkMode ? 'border-[#0d1117] hover:bg-[#0d1117]' : 'border-[#F8FAFC] hover:bg-[#F8FAFC]'}`}>
+                        <td className={`px-4 py-3 font-mono text-xs font-semibold text-[#2FB7A1]`}>{b.batchId}</td>
+                        <td className={`px-4 py-3 whitespace-nowrap ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>{b.dateAdded || '—'}</td>
+                        <td className={`px-4 py-3 font-medium ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>{b.productName}</td>
+                        <td className={`px-4 py-3 ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>{b.supplier || '—'}</td>
+                        <td className={`px-4 py-3 text-right tabular-nums ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>{(b.quantityAdded || 0).toLocaleString()}</td>
+                        <td className={`px-4 py-3 text-right tabular-nums ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>{(b.quantitySold || 0).toLocaleString()}</td>
+                        <td className="px-4 py-3 text-right">
+                          <span className={`tabular-nums font-semibold ${isOut ? 'text-red-500' : isLow ? 'text-amber-500' : darkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                            {(b.quantityRemaining || 0).toLocaleString()}
+                            {isOut && <span className="ml-1 text-[9px]">OUT</span>}
+                            {isLow && <span className="ml-1 text-[9px]">LOW</span>}
+                          </span>
+                        </td>
+                        <td className={`px-4 py-3 text-right tabular-nums ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>{formatCurrencyNaira(costOfPurchase)}</td>
+                        <td className={`px-4 py-3 text-right tabular-nums ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>{formatCurrencyNaira(b.shippingCost || 0)}</td>
+                        <td className={`px-4 py-3 text-right tabular-nums font-semibold ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>{formatCurrencyNaira(b.costPrice || 0)}</td>
+                        <td className={`px-4 py-3 text-right tabular-nums font-semibold text-[#2FB7A1]`}>{formatCurrencyNaira(b.inventoryValue || 0)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+                <tfoot>
+                  <tr className={`border-t-2 text-xs font-semibold ${darkMode ? 'bg-[#0d1117] border-[#1f2937]' : 'bg-[#F9FAFB] border-[#E3E8EF]'}`}>
+                    <td colSpan="4" className={`px-4 py-3 ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>Total ({batches.length} batches)</td>
+                    <td className={`px-4 py-3 text-right tabular-nums ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>{grandReceived.toLocaleString()}</td>
+                    <td className={`px-4 py-3 text-right tabular-nums ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>{grandSold.toLocaleString()}</td>
+                    <td className={`px-4 py-3 text-right tabular-nums text-[#2FB7A1]`}>{grandBalance.toLocaleString()}</td>
+                    <td className={`px-4 py-3 text-right tabular-nums ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>
+                      {formatCurrencyNaira(batches.reduce((s, b) => s + (b.costPrice || 0) * (b.quantityAdded || 0), 0))}
+                    </td>
+                    <td className={`px-4 py-3 text-right tabular-nums ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>
+                      {formatCurrencyNaira(batches.reduce((s, b) => s + (b.shippingCost || 0), 0))}
+                    </td>
+                    <td />
+                    <td className="px-4 py-3 text-right tabular-nums font-bold text-[#2FB7A1]">{formatCurrencyNaira(grandValue)}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+
+            {/* Mobile Cards */}
+            <div className="md:hidden divide-y divide-[#F1F5F9] dark:divide-[#1f2937]">
+              {batches.length === 0 ? (
+                <p className={`py-10 text-center text-sm ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>No batch data</p>
+              ) : batches.map((b, idx) => {
+                const isOut  = (b.quantityRemaining || 0) === 0;
+                const isLow  = !isOut && (b.quantityRemaining || 0) < 50;
+                const costOfPurchase = (b.costPrice || 0) * (b.quantityAdded || 0);
+
+                return (
+                  <div key={b.batchId || idx} className={`p-4 ${b.isLowStock ? (darkMode ? 'bg-red-900/10' : 'bg-red-50') : ''}`}>
+                    {/* Header row */}
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <p className="font-mono text-xs font-semibold text-[#2FB7A1]">{b.batchId}</p>
+                        <p className={`font-semibold text-sm mt-0.5 ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>{b.productName}</p>
+                        <p className={`text-xs mt-0.5 ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>{b.dateAdded || '—'} · {b.supplier || '—'}</p>
                       </div>
-                    ) : (
-                      <div className="bg-white dark:bg-[#1A1A1A] rounded-xl shadow-sm border border-[#E3E8EF] dark:border-[#2A2A2A] p-6">
-                        <p className="text-center text-[#64748B] dark:text-gray-400">No inventory data available</p>
-                      </div>
-                    )}
+                      <span className={`text-[10px] font-bold px-2 py-1 rounded-full flex-shrink-0 ${
+                        isOut ? 'bg-red-100 text-red-700' : isLow ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'
+                      }`}>
+                        {isOut ? 'Out' : isLow ? 'Low' : 'In Stock'}
+                      </span>
+                    </div>
+
+                    {/* Stats grid */}
+                    <div className={`grid grid-cols-3 gap-2 rounded-lg p-3 mb-2 ${darkMode ? 'bg-[#0d1117]' : 'bg-[#F8FAFC]'}`}>
+                      {[
+                        { label: 'Received', value: (b.quantityAdded || 0).toLocaleString() },
+                        { label: 'Sold',     value: (b.quantitySold  || 0).toLocaleString() },
+                        { label: 'Balance',  value: (b.quantityRemaining || 0).toLocaleString(),
+                          color: isOut ? 'text-red-500' : isLow ? 'text-amber-500' : 'text-emerald-500' },
+                      ].map((s, i) => (
+                        <div key={i} className="text-center">
+                          <p className={`text-[10px] font-semibold uppercase tracking-wide mb-0.5 ${darkMode ? 'text-gray-600' : 'text-[#94A3B8]'}`}>{s.label}</p>
+                          <p className={`text-sm font-bold ${s.color || (darkMode ? 'text-white' : 'text-[#0F172A]')}`}>{s.value}</p>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Cost row */}
+                    <div className={`grid grid-cols-3 gap-2 text-xs ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>
+                      {[
+                        { label: 'Cost of Purchase', value: formatCurrencyNaira(costOfPurchase) },
+                        { label: 'Logistics',         value: formatCurrencyNaira(b.shippingCost || 0) },
+                        { label: 'Unit Cost',         value: formatCurrencyNaira(b.costPrice || 0) },
+                      ].map((s, i) => (
+                        <div key={i}>
+                          <p className={`text-[9px] font-semibold uppercase tracking-wide ${darkMode ? 'text-gray-600' : 'text-[#94A3B8]'}`}>{s.label}</p>
+                          <p className={`font-semibold mt-0.5 ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>{s.value}</p>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="mt-2 pt-2 border-t border-[#F1F5F9] dark:border-[#1f2937] flex justify-between items-center">
+                      <span className={`text-xs ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>Stock Value</span>
+                      <span className="text-sm font-bold text-[#2FB7A1]">{formatCurrencyNaira(b.inventoryValue || 0)}</span>
+                    </div>
                   </div>
-                )}
+                );
+              })}
+
+              {/* Mobile footer total */}
+              {batches.length > 0 && (
+                <div className={`px-4 py-3 flex justify-between text-xs font-semibold ${darkMode ? 'bg-[#0d1117] text-gray-300' : 'bg-[#F9FAFB] text-[#0F172A]'}`}>
+                  <span>{batches.length} batches · {grandBalance.toLocaleString()} in stock</span>
+                  <span className="text-[#2FB7A1]">{formatCurrencyNaira(grandValue)}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+})()}
 
 {activeReportTab === 'sales' && (
   <div>
