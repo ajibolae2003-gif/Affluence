@@ -4946,431 +4946,363 @@ const InventorySystem = ({ onLogout }) => {
 )}
 
                 {/* Profit & Loss Report */}
-                {activeReportTab === 'profit' && (
-  <div>
-    {/* Summary Cards */}
-    {salesReportData && (() => {
-      const allSales = [];
-      (salesReportData.products || []).forEach(product => {
-        (product.batches || []).forEach(batchData => {
-          (batchData.sales || []).forEach(sale => {
-            allSales.push({
-              ...sale,
-              productName: product.product?.name,
-              productId: product.product?.id,
-              batchId: batchData.batch?.id,
-              unitPrice: sale.sellingPriceUsed || sale.selling_price_used || batchData.batch?.sellingPrice || 0,
-              unitCost: sale.costPriceUsed || sale.cost_price_used || batchData.batch?.costPrice || 0,
-            });
-          });
+                {activeReportTab === 'profit' && (() => {
+  // ── All data processing OUTSIDE JSX ──
+  const allSalesProfit = [];
+  (salesReportData?.products || []).forEach(product => {
+    (product.batches || []).forEach(batchData => {
+      (batchData.sales || []).forEach(sale => {
+        allSalesProfit.push({
+          ...sale,
+          productName: product.product?.name,
+          productId:   product.product?.id,
+          batchId:     batchData.batch?.id,
+          unitPrice:   sale.sellingPriceUsed || sale.selling_price_used || batchData.batch?.sellingPrice || 0,
+          unitCost:    sale.costPriceUsed || sale.cost_price_used || batchData.batch?.costPrice || 0,
         });
       });
+    });
+  });
 
-      const totalSales    = allSales.reduce((s, x) => s + (x.revenue || 0), 0);
-      const totalCost     = allSales.reduce((s, x) => s + (x.cost || 0), 0);
-      const totalDelivery = (() => {
-        const seen = new Set();
-        let sum = 0;
-        allSales.forEach(x => {
-          const oid = x.orderId || x.order_id;
-          if (oid && !seen.has(oid)) {
-            seen.add(oid);
-            const o = orders.find(o => o.id === oid);
-            sum += parseFloat(o?.shipping?.shippingCost || 0);
-          }
-        });
-        return sum;
-      })();
-      const netProfit = totalSales - totalCost - totalDelivery;
+  // Group by order
+  const byOrder = {};
+  allSalesProfit.forEach(sale => {
+    const oid = sale.orderId || sale.order_id || 'unknown';
+    if (!byOrder[oid]) {
+      const o = orders.find(o => o.id === oid);
+      byOrder[oid] = {
+        orderId:      oid,
+        date:         sale.dateSold || sale.date_sold || '',
+        customer:     sale.customerName || sale.customer_name || '—',
+        qty:          0,
+        salesAmount:  0,
+        productCost:  0,
+        deliveryCost: parseFloat(o?.shipping?.shippingCost || 0),
+        batches:      [],
+        orderObj:     o,
+      };
+    }
+    byOrder[oid].qty         += sale.quantitySold || sale.quantity_sold || 0;
+    byOrder[oid].salesAmount += sale.revenue || 0;
+    byOrder[oid].productCost += sale.cost || 0;
+    byOrder[oid].batches.push(sale);
+  });
 
-      // Group by order for the table
-      const byOrder = {};
-      allSales.forEach(sale => {
-        const oid = sale.orderId || sale.order_id || 'unknown';
-        if (!byOrder[oid]) {
-          const o = orders.find(o => o.id === oid);
-          byOrder[oid] = {
-            orderId:      oid,
-            date:         sale.dateSold || sale.date_sold || '',
-            customer:     sale.customerName || sale.customer_name || '—',
-            qty:          0,
-            salesAmount:  0,
-            productCost:  0,
-            deliveryCost: parseFloat(o?.shipping?.shippingCost || 0),
-            batches:      [],
-            orderObj:     o,
-          };
-        }
-        byOrder[oid].qty         += sale.quantitySold || sale.quantity_sold || 0;
-        byOrder[oid].salesAmount += sale.revenue || 0;
-        byOrder[oid].productCost += sale.cost || 0;
-        byOrder[oid].batches.push(sale);
-      });
-      const orderRows = Object.values(byOrder).sort((a, b) => {
-        if (!a.date && !b.date) return 0;
-        return new Date(b.date) - new Date(a.date);
-      });
+  const orderRows = Object.values(byOrder).sort((a, b) =>
+    new Date(b.date) - new Date(a.date)
+  );
 
-      // Filter
-      const customerF = (salesCustomerFilter || '').toLowerCase().trim();
-      const filtered = orderRows.filter(r => {
-        if (customerF && !r.customer.toLowerCase().includes(customerF)) return false;
-        if (reportDateFrom && r.date && r.date < reportDateFrom) return false;
-        if (reportDateTo   && r.date && r.date > reportDateTo)   return false;
-        return true;
-      });
+  // Filters
+  const customerF = (salesCustomerFilter || '').toLowerCase().trim();
+  const filtered = orderRows.filter(r => {
+    if (customerF && !r.customer.toLowerCase().includes(customerF)) return false;
+    if (reportDateFrom && r.date && r.date < reportDateFrom) return false;
+    if (reportDateTo   && r.date && r.date > reportDateTo)   return false;
+    return true;
+  });
 
-      const fSales    = filtered.reduce((s, r) => s + r.salesAmount, 0);
-      const fCost     = filtered.reduce((s, r) => s + r.productCost, 0);
-      const fDelivery = filtered.reduce((s, r) => s + r.deliveryCost, 0);
-      const fProfit   = fSales - fCost - fDelivery;
+  const fSales    = filtered.reduce((s, r) => s + r.salesAmount, 0);
+  const fCost     = filtered.reduce((s, r) => s + r.productCost, 0);
+  const fDelivery = filtered.reduce((s, r) => s + r.deliveryCost, 0);
+  const fProfit   = fSales - fCost - fDelivery;
 
-      return (
-        <>
-          {/* Summary Strip */}
-          <div className={`rounded-xl border mb-6 overflow-hidden ${darkMode ? 'bg-[#111827] border-[#1f2937]' : 'bg-white border-[#E3E8EF]'}`}>
-            <div className={`grid grid-cols-2 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x ${darkMode ? 'divide-[#1f2937]' : 'divide-[#E3E8EF]'}`}>
-              {[
-                { label: 'Total Sales',         value: formatCurrencyNaira(fSales),    accent: '#2FB7A1' },
-                { label: 'Total Product Cost',  value: formatCurrencyNaira(fCost),     accent: '#64748B' },
-                { label: 'Total Delivery Cost', value: formatCurrencyNaira(fDelivery), accent: '#F59E0B' },
-                { label: 'Net Profit',          value: formatCurrencyNaira(fProfit),   accent: fProfit >= 0 ? '#16A34A' : '#DC2626' },
-              ].map((card, i) => (
-                <div key={i} className="px-5 py-4 flex items-center gap-3">
-                  <div className="w-1 h-9 rounded-full flex-shrink-0" style={{ background: card.accent }} />
-                  <div>
-                    <p className={`text-[10px] font-semibold uppercase tracking-wide mb-0.5 ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>{card.label}</p>
-                    <p className="text-lg font-bold" style={{ color: card.accent }}>{card.value}</p>
-                  </div>
-                </div>
-              ))}
+  // Breakdown panel data
+  const bd       = saleProfitBreakdown;
+  const bSales   = bd?.summary?.salesAmount  || 0;
+  const bCost    = bd?.summary?.productCost  || bd?.summary?.totalCost || 0;
+  const bDelivery= bd?.summary?.deliveryCost || 0;
+  const bProfit  = bSales - bCost - bDelivery;
+
+  const fmtDate = (val) => val
+    ? new Date(val).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' })
+    : '—';
+
+  return (
+    <div>
+      {/* Summary Strip */}
+      <div className={`rounded-xl border mb-6 overflow-hidden ${darkMode ? 'bg-[#111827] border-[#1f2937]' : 'bg-white border-[#E3E8EF]'}`}>
+        <div className={`grid grid-cols-2 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x ${darkMode ? 'divide-[#1f2937]' : 'divide-[#E3E8EF]'}`}>
+          {[
+            { label: 'Total Sales',         value: formatCurrencyNaira(fSales),    accent: '#2FB7A1' },
+            { label: 'Total Product Cost',  value: formatCurrencyNaira(fCost),     accent: '#64748B' },
+            { label: 'Total Delivery Cost', value: formatCurrencyNaira(fDelivery), accent: '#F59E0B' },
+            { label: 'Net Profit',          value: formatCurrencyNaira(fProfit),   accent: fProfit >= 0 ? '#16A34A' : '#DC2626' },
+          ].map((card, i) => (
+            <div key={i} className="px-5 py-4 flex items-center gap-3">
+              <div className="w-1 h-9 rounded-full flex-shrink-0" style={{ background: card.accent }} />
+              <div>
+                <p className={`text-[10px] font-semibold uppercase tracking-wide mb-0.5 ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>{card.label}</p>
+                <p className="text-lg font-bold" style={{ color: card.accent }}>{card.value}</p>
+              </div>
             </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className={`rounded-xl border p-4 mb-5 ${darkMode ? 'bg-[#111827] border-[#1f2937]' : 'bg-white border-[#E3E8EF]'}`}>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div>
+            <label className={`block text-xs font-medium mb-1 ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>From</label>
+            <input type="date" value={reportDateFrom} onChange={e => setReportDateFrom(e.target.value)}
+              className={`w-full px-3 py-2 rounded-lg text-sm border focus:ring-2 focus:ring-[#2FB7A1] ${darkMode ? 'bg-[#0d1117] border-[#1f2937] text-white' : 'bg-white border-[#E3E8EF] text-[#0F172A]'}`} />
+          </div>
+          <div>
+            <label className={`block text-xs font-medium mb-1 ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>To</label>
+            <input type="date" value={reportDateTo} onChange={e => setReportDateTo(e.target.value)}
+              className={`w-full px-3 py-2 rounded-lg text-sm border focus:ring-2 focus:ring-[#2FB7A1] ${darkMode ? 'bg-[#0d1117] border-[#1f2937] text-white' : 'bg-white border-[#E3E8EF] text-[#0F172A]'}`} />
+          </div>
+          <div>
+            <label className={`block text-xs font-medium mb-1 ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>Product</label>
+            <select value={reportProductFilter} onChange={e => setReportProductFilter(e.target.value)}
+              className={`w-full px-3 py-2 rounded-lg text-sm border focus:ring-2 focus:ring-[#2FB7A1] ${darkMode ? 'bg-[#0d1117] border-[#1f2937] text-white' : 'bg-white border-[#E3E8EF] text-[#0F172A]'}`}>
+              <option value="">All Products</option>
+              {inventory.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className={`block text-xs font-medium mb-1 ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>Customer</label>
+            <input type="text" placeholder="Filter by customer…" value={salesCustomerFilter}
+              onChange={e => setSalesCustomerFilter(e.target.value)}
+              className={`w-full px-3 py-2 rounded-lg text-sm border focus:ring-2 focus:ring-[#2FB7A1] ${darkMode ? 'bg-[#0d1117] border-[#1f2937] text-white placeholder-gray-600' : 'bg-white border-[#E3E8EF] text-[#0F172A]'}`} />
+          </div>
+        </div>
+        <div className="mt-3 flex justify-end">
+          <button onClick={() => { setReportDateFrom(''); setReportDateTo(''); setReportProductFilter(''); setSalesCustomerFilter(''); }}
+            className={`text-xs px-3 py-1.5 rounded-lg border transition ${darkMode ? 'border-[#1f2937] text-gray-400 hover:bg-[#1f2937]' : 'border-[#E3E8EF] text-[#64748B] hover:bg-gray-50'}`}>
+            Clear Filters
+          </button>
+        </div>
+      </div>
+
+      {/* Breakdown Panel */}
+      {bd && (
+        <div className={`rounded-xl border mb-5 overflow-hidden ${darkMode ? 'bg-[#111827] border-[#2FB7A1]/30' : 'bg-white border-[#2FB7A1]/40'}`}>
+          <div className={`flex items-center justify-between px-5 py-3 border-b ${darkMode ? 'bg-[#0d1117] border-[#1f2937]' : 'bg-[#F0FDF9] border-[#E3E8EF]'}`}>
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-[#2FB7A1]" />
+              <span className={`text-sm font-semibold ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>Sale Profit Breakdown</span>
+              <span className={`font-mono text-xs px-2 py-0.5 rounded ${darkMode ? 'bg-[#1f2937] text-[#2FB7A1]' : 'bg-[#E0F7F3] text-[#0F766E]'}`}>
+                {bd.orderId || '—'}
+              </span>
+            </div>
+            <button onClick={() => setSaleProfitBreakdown(null)}
+              className={`text-xs px-3 py-1 rounded-lg border transition ${darkMode ? 'border-[#1f2937] text-gray-400 hover:bg-[#1f2937]' : 'border-[#E3E8EF] text-[#64748B] hover:bg-gray-50'}`}>
+              Close
+            </button>
           </div>
 
-          {/* Filters */}
-          <div className={`rounded-xl border p-4 mb-5 ${darkMode ? 'bg-[#111827] border-[#1f2937]' : 'bg-white border-[#E3E8EF]'}`}>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <div>
-                <label className={`block text-xs font-medium mb-1 ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>From</label>
-                <input type="date" value={reportDateFrom} onChange={e => setReportDateFrom(e.target.value)}
-                  className={`w-full px-3 py-2 rounded-lg text-sm border focus:ring-2 focus:ring-[#2FB7A1] ${darkMode ? 'bg-[#0d1117] border-[#1f2937] text-white' : 'bg-white border-[#E3E8EF] text-[#0F172A]'}`} />
-              </div>
-              <div>
-                <label className={`block text-xs font-medium mb-1 ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>To</label>
-                <input type="date" value={reportDateTo} onChange={e => setReportDateTo(e.target.value)}
-                  className={`w-full px-3 py-2 rounded-lg text-sm border focus:ring-2 focus:ring-[#2FB7A1] ${darkMode ? 'bg-[#0d1117] border-[#1f2937] text-white' : 'bg-white border-[#E3E8EF] text-[#0F172A]'}`} />
-              </div>
-              <div>
-                <label className={`block text-xs font-medium mb-1 ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>Product</label>
-                <select value={reportProductFilter} onChange={e => setReportProductFilter(e.target.value)}
-                  className={`w-full px-3 py-2 rounded-lg text-sm border focus:ring-2 focus:ring-[#2FB7A1] ${darkMode ? 'bg-[#0d1117] border-[#1f2937] text-white' : 'bg-white border-[#E3E8EF] text-[#0F172A]'}`}>
-                  <option value="">All Products</option>
-                  {inventory.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className={`block text-xs font-medium mb-1 ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>Customer</label>
-                <input type="text" placeholder="Filter by customer…" value={salesCustomerFilter}
-                  onChange={e => setSalesCustomerFilter(e.target.value)}
-                  className={`w-full px-3 py-2 rounded-lg text-sm border focus:ring-2 focus:ring-[#2FB7A1] ${darkMode ? 'bg-[#0d1117] border-[#1f2937] text-white placeholder-gray-600' : 'bg-white border-[#E3E8EF] text-[#0F172A]'}`} />
-              </div>
-            </div>
-            <div className="mt-3 flex justify-end">
-              <button onClick={() => { setReportDateFrom(''); setReportDateTo(''); setReportProductFilter(''); setSalesCustomerFilter(''); }}
-                className={`text-xs px-3 py-1.5 rounded-lg border transition ${darkMode ? 'border-[#1f2937] text-gray-400 hover:bg-[#1f2937]' : 'border-[#E3E8EF] text-[#64748B] hover:bg-gray-50'}`}>
-                Clear Filters
-              </button>
-            </div>
-          </div>
-
-          {/* Selected Sale Breakdown Panel */}
-          {saleProfitBreakdown && (() => {
-            const bd = saleProfitBreakdown;
-            const bSales    = bd.summary?.salesAmount    || 0;
-            const bCost     = bd.summary?.productCost    || bd.summary?.totalCost || 0;
-            const bDelivery = bd.summary?.deliveryCost   || 0;
-            const bProfit   = bSales - bCost - bDelivery;
-
-            return (
-              <div className={`rounded-xl border mb-5 overflow-hidden ${darkMode ? 'bg-[#111827] border-[#2FB7A1]/30' : 'bg-white border-[#2FB7A1]/40'}`}>
-                {/* Panel header */}
-                <div className={`flex items-center justify-between px-5 py-3 border-b ${darkMode ? 'bg-[#0d1117] border-[#1f2937]' : 'bg-[#F0FDF9] border-[#E3E8EF]'}`}>
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-[#2FB7A1]" />
-                    <span className={`text-sm font-semibold ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>Sale Profit Breakdown</span>
-                    <span className={`font-mono text-xs px-2 py-0.5 rounded ${darkMode ? 'bg-[#1f2937] text-[#2FB7A1]' : 'bg-[#E0F7F3] text-[#0F766E]'}`}>
-                      {bd.orderId || '—'}
-                    </span>
+          <div className="p-5 space-y-5">
+            {/* Sale Summary Grid */}
+            <div>
+              <p className={`text-[10px] font-bold uppercase tracking-widest mb-3 ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>Sale Summary</p>
+              <div className={`grid grid-cols-2 md:grid-cols-4 gap-3 rounded-lg p-4 ${darkMode ? 'bg-[#0d1117]' : 'bg-[#F8FAFC]'}`}>
+                {[
+                  { label: 'Sales No',           value: bd.orderId || '—' },
+                  { label: 'Date',               value: fmtDate(bd.date) },
+                  { label: 'Customer',           value: bd.customerName || '—' },
+                  { label: 'Total Qty Sold',     value: bd.summary?.totalQuantity ?? '—' },
+                  { label: 'Total Sales Amount', value: formatCurrencyNaira(bSales),    highlight: true },
+                  { label: 'Total Product Cost', value: formatCurrencyNaira(bCost) },
+                  { label: 'Delivery Cost',      value: formatCurrencyNaira(bDelivery) },
+                  { label: 'Net Profit',         value: formatCurrencyNaira(bProfit),   profit: true },
+                ].map((item, i) => (
+                  <div key={i}>
+                    <p className={`text-[10px] font-semibold uppercase tracking-wide mb-0.5 ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>{item.label}</p>
+                    <p className={`text-sm font-semibold ${
+                      item.profit    ? (bProfit >= 0 ? 'text-emerald-500' : 'text-red-500') :
+                      item.highlight ? 'text-[#2FB7A1]' :
+                      darkMode       ? 'text-white' : 'text-[#0F172A]'
+                    }`}>{item.value}</p>
                   </div>
-                  <button onClick={() => setSaleProfitBreakdown(null)}
-                    className={`text-xs px-3 py-1 rounded-lg border transition ${darkMode ? 'border-[#1f2937] text-gray-400 hover:bg-[#1f2937]' : 'border-[#E3E8EF] text-[#64748B] hover:bg-gray-50'}`}>
-                    Close
-                  </button>
-                </div>
+                ))}
+              </div>
+            </div>
 
-                <div className="p-5 space-y-5">
-                  {/* Sale Summary */}
-                  <div>
-                    <p className={`text-[10px] font-bold uppercase tracking-widest mb-3 ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>Sale Summary</p>
-                    <div className={`grid grid-cols-2 md:grid-cols-4 gap-3 rounded-lg p-4 ${darkMode ? 'bg-[#0d1117]' : 'bg-[#F8FAFC]'}`}>
-                      {[
-                        { label: 'Sales No',           value: bd.orderId || '—' },
-                        { label: 'Date',               value: bd.date ? new Date(bd.date).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }) : '—' },
-                        { label: 'Customer',           value: bd.customerName || '—' },
-                        { label: 'Total Qty Sold',     value: bd.summary?.totalQuantity ?? '—' },
-                        { label: 'Selling Price/Unit', value: formatCurrencyNaira(bd.summary?.sellingPricePerUnit || (bd.batches?.[0]?.unitCost ? null : null)) },
-                        { label: 'Total Sales Amount', value: formatCurrencyNaira(bSales), highlight: true },
-                        { label: 'Delivery Cost',      value: formatCurrencyNaira(bDelivery) },
-                        { label: 'Net Profit',         value: formatCurrencyNaira(bProfit), profit: true },
-                      ].map((item, i) => (
-                        <div key={i}>
-                          <p className={`text-[10px] font-semibold uppercase tracking-wide mb-0.5 ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>{item.label}</p>
-                          <p className={`text-sm font-semibold ${
-                            item.profit    ? (bProfit >= 0 ? 'text-emerald-500' : 'text-red-500') :
-                            item.highlight ? 'text-[#2FB7A1]' :
-                            darkMode       ? 'text-white' : 'text-[#0F172A]'
-                          }`}>{item.value}</p>
-                        </div>
+            {/* FIFO Table */}
+            <div>
+              <p className={`text-[10px] font-bold uppercase tracking-widest mb-3 ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>FIFO Cost Breakdown</p>
+              <div className={`rounded-lg border overflow-hidden ${darkMode ? 'border-[#1f2937]' : 'border-[#E3E8EF]'}`}>
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className={`${darkMode ? 'bg-[#0d1117]' : 'bg-[#F9FAFB]'}`}>
+                      {['Product', 'Batch No', 'Batch Date', 'Qty Picked', 'Unit Cost', 'Total Cost'].map((h, i) => (
+                        <th key={i} className={`px-3 py-2.5 text-left font-bold uppercase tracking-wide border-b ${darkMode ? 'text-gray-500 border-[#1f2937]' : 'text-[#94A3B8] border-[#E3E8EF]'} ${i >= 3 ? 'text-right' : ''}`}>{h}</th>
                       ))}
-                    </div>
-                  </div>
-
-                  {/* FIFO Cost Breakdown Table */}
-                  <div>
-                    <p className={`text-[10px] font-bold uppercase tracking-widest mb-3 ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>FIFO Cost Breakdown</p>
-                    <div className={`rounded-lg border overflow-hidden ${darkMode ? 'border-[#1f2937]' : 'border-[#E3E8EF]'}`}>
-                      <table className="w-full text-xs">
-                        <thead>
-                          <tr className={`${darkMode ? 'bg-[#0d1117]' : 'bg-[#F9FAFB]'}`}>
-                            {['Product', 'Batch No', 'Batch Date', 'Qty Picked', 'Unit Cost', 'Total Cost'].map((h, i) => (
-                              <th key={i} className={`px-3 py-2.5 text-left font-bold uppercase tracking-wide border-b ${darkMode ? 'text-gray-500 border-[#1f2937]' : 'text-[#94A3B8] border-[#E3E8EF]'} ${i >= 3 ? 'text-right' : ''}`}>
-                                {h}
-                              </th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {bd.batches && bd.batches.length > 0 ? bd.batches.map((b, idx) => (
-                            <tr key={idx} className={`border-b ${darkMode ? 'border-[#1f2937]' : 'border-[#F1F5F9]'}`}>
-                              <td className={`px-3 py-2.5 font-medium ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>
-                                {b.productName || inventory.find(p => p.id === b.productId)?.name || '—'}
-                              </td>
-                              <td className={`px-3 py-2.5 font-mono ${darkMode ? 'text-[#2FB7A1]' : 'text-[#2FB7A1]'}`}>
-                                {b.batchId || '—'}
-                              </td>
-                              <td className={`px-3 py-2.5 ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>
-                                {b.batchDate ? new Date(b.batchDate).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }) : '—'}
-                              </td>
-                              <td className={`px-3 py-2.5 text-right tabular-nums ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>
-                                {b.quantityPicked || b.quantity || 0}
-                              </td>
-                              <td className={`px-3 py-2.5 text-right tabular-nums ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>
-                                {formatCurrencyNaira(b.unitCost)}
-                              </td>
-                              <td className={`px-3 py-2.5 text-right tabular-nums font-semibold ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>
-                                {formatCurrencyNaira(b.totalCost)}
-                              </td>
-                            </tr>
-                          )) : (
-                            <tr>
-                              <td colSpan="6" className={`px-3 py-6 text-center ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>
-                                No FIFO batch data available
-                              </td>
-                            </tr>
-                          )}
-                        </tbody>
-                        {bd.batches?.length > 0 && (
-                          <tfoot>
-                            <tr className={`border-t-2 font-semibold ${darkMode ? 'bg-[#0d1117] border-[#1f2937]' : 'bg-[#F9FAFB] border-[#E3E8EF]'}`}>
-                              <td colSpan="3" className={`px-3 py-2.5 text-xs ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>Total</td>
-                              <td className={`px-3 py-2.5 text-right text-xs tabular-nums ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>
-                                {bd.batches.reduce((s, b) => s + (b.quantityPicked || b.quantity || 0), 0)}
-                              </td>
-                              <td />
-                              <td className={`px-3 py-2.5 text-right text-xs tabular-nums font-bold ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>
-                                {formatCurrencyNaira(bd.batches.reduce((s, b) => s + (b.totalCost || 0), 0))}
-                              </td>
-                            </tr>
-                          </tfoot>
-                        )}
-                      </table>
-                    </div>
-                  </div>
-
-                  {/* Profit Computation */}
-                  <div>
-                    <p className={`text-[10px] font-bold uppercase tracking-widest mb-3 ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>Profit Computation</p>
-                    <div className={`rounded-lg border overflow-hidden ${darkMode ? 'border-[#1f2937]' : 'border-[#E3E8EF]'}`}>
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className={`${darkMode ? 'bg-[#0d1117]' : 'bg-[#F9FAFB]'}`}>
-                            <th className={`px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-wide border-b ${darkMode ? 'text-gray-500 border-[#1f2937]' : 'text-[#94A3B8] border-[#E3E8EF]'}`}>Item</th>
-                            <th className={`px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-wide border-b ${darkMode ? 'text-gray-500 border-[#1f2937]' : 'text-[#94A3B8] border-[#E3E8EF]'}`}>Amount</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {[
-                            { label: 'Total Sales Amount',       value: bSales,     cls: `font-semibold ${darkMode ? 'text-white' : 'text-[#0F172A]'}` },
-                            { label: 'Less: Total Product Cost', value: -bCost,     cls: `${darkMode ? 'text-gray-300' : 'text-[#64748B]'}`, show: formatCurrencyNaira(bCost) },
-                            { label: 'Less: Delivery Cost',      value: -bDelivery, cls: `${darkMode ? 'text-gray-300' : 'text-[#64748B]'}`, show: formatCurrencyNaira(bDelivery) },
-                          ].map((row, i) => (
-                            <tr key={i} className={`border-b ${darkMode ? 'border-[#1f2937]' : 'border-[#F1F5F9]'}`}>
-                              <td className={`px-4 py-3 ${row.cls}`}>{row.label}</td>
-                              <td className={`px-4 py-3 text-right tabular-nums ${row.cls}`}>
-                                {row.show || formatCurrencyNaira(row.value)}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                        <tfoot>
-                          <tr className={`border-t-2 ${darkMode ? 'bg-[#0d1117] border-[#1f2937]' : 'bg-[#F0FDF9] border-[#2FB7A1]/30'}`}>
-                            <td className={`px-4 py-3 font-bold text-sm ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>Net Profit</td>
-                            <td className={`px-4 py-3 text-right tabular-nums font-bold text-base ${bProfit >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                              {formatCurrencyNaira(bProfit)}
-                            </td>
-                          </tr>
-                        </tfoot>
-                      </table>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })()}
-
-          {/* Main P&L Table */}
-          <div className={`rounded-xl border overflow-hidden ${darkMode ? 'bg-[#111827] border-[#1f2937]' : 'bg-white border-[#E3E8EF]'}`}>
-
-            {/* Desktop */}
-            <div className="hidden md:block overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className={`${darkMode ? 'bg-[#0d1117]' : 'bg-[#F9FAFB]'}`}>
-                    {['Sales No', 'Date', 'Customer', 'Qty', 'Sales Amount', 'Product Cost', 'Delivery Cost', 'Profit'].map((h, i) => (
-                      <th key={i} className={`px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wide border-b ${darkMode ? 'text-gray-500 border-[#1f2937]' : 'text-[#94A3B8] border-[#E3E8EF]'} ${i >= 3 ? 'text-right' : ''}`}>
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.length === 0 ? (
-                    <tr>
-                      <td colSpan="8" className={`py-14 text-center text-sm ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>
-                        No data available
-                      </td>
                     </tr>
-                  ) : filtered.map((row, idx) => {
-                    const profit    = row.salesAmount - row.productCost - row.deliveryCost;
-                    const isProfit  = profit >= 0;
-                    const date      = row.date
-                      ? new Date(row.date).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' })
-                      : '—';
-
-                    return (
-                      <tr key={idx}
-                        onClick={() => fetchSaleProfitBreakdown(row.orderId)}
-                        className={`border-b cursor-pointer transition ${darkMode ? 'border-[#0d1117] hover:bg-[#0d1117]' : 'border-[#F8FAFC] hover:bg-[#F0FDF9]'} ${saleProfitBreakdown?.orderId === row.orderId ? (darkMode ? 'bg-[#0d1117]' : 'bg-[#F0FDF9]') : ''}`}>
-                        <td className={`px-4 py-3 font-mono text-xs font-semibold text-[#2FB7A1]`}>{row.orderId}</td>
-                        <td className={`px-4 py-3 whitespace-nowrap ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>{date}</td>
-                        <td className={`px-4 py-3 font-medium ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>{row.customer}</td>
-                        <td className={`px-4 py-3 text-right tabular-nums ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>{row.qty}</td>
-                        <td className={`px-4 py-3 text-right tabular-nums ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>{formatCurrencyNaira(row.salesAmount)}</td>
-                        <td className={`px-4 py-3 text-right tabular-nums ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>{formatCurrencyNaira(row.productCost)}</td>
-                        <td className={`px-4 py-3 text-right tabular-nums ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>{formatCurrencyNaira(row.deliveryCost)}</td>
-                        <td className={`px-4 py-3 text-right tabular-nums font-bold ${isProfit ? 'text-emerald-500' : 'text-red-500'}`}>
-                          {formatCurrencyNaira(profit)}
-                        </td>
+                  </thead>
+                  <tbody>
+                    {bd.batches?.length > 0 ? bd.batches.map((b, i) => (
+                      <tr key={i} className={`border-b ${darkMode ? 'border-[#1f2937]' : 'border-[#F1F5F9]'}`}>
+                        <td className={`px-3 py-2.5 font-medium ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>{b.productName || inventory.find(p => p.id === b.productId)?.name || '—'}</td>
+                        <td className="px-3 py-2.5 font-mono text-[#2FB7A1]">{b.batchId || '—'}</td>
+                        <td className={`px-3 py-2.5 ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>{fmtDate(b.batchDate)}</td>
+                        <td className={`px-3 py-2.5 text-right tabular-nums ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>{b.quantityPicked || b.quantity || 0}</td>
+                        <td className={`px-3 py-2.5 text-right tabular-nums ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>{formatCurrencyNaira(b.unitCost)}</td>
+                        <td className={`px-3 py-2.5 text-right tabular-nums font-semibold ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>{formatCurrencyNaira(b.totalCost)}</td>
                       </tr>
-                    );
-                  })}
-                </tbody>
-                {filtered.length > 0 && (
+                    )) : (
+                      <tr><td colSpan="6" className={`px-3 py-6 text-center ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>No FIFO data available</td></tr>
+                    )}
+                  </tbody>
+                  {bd.batches?.length > 0 && (
+                    <tfoot>
+                      <tr className={`border-t-2 font-semibold ${darkMode ? 'bg-[#0d1117] border-[#1f2937]' : 'bg-[#F9FAFB] border-[#E3E8EF]'}`}>
+                        <td colSpan="3" className={`px-3 py-2.5 text-xs ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>Total</td>
+                        <td className={`px-3 py-2.5 text-right text-xs tabular-nums ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>{bd.batches.reduce((s,b)=>s+(b.quantityPicked||b.quantity||0),0)}</td>
+                        <td />
+                        <td className={`px-3 py-2.5 text-right text-xs tabular-nums font-bold ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>{formatCurrencyNaira(bd.batches.reduce((s,b)=>s+(b.totalCost||0),0))}</td>
+                      </tr>
+                    </tfoot>
+                  )}
+                </table>
+              </div>
+            </div>
+
+            {/* Profit Computation */}
+            <div>
+              <p className={`text-[10px] font-bold uppercase tracking-widest mb-3 ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>Profit Computation</p>
+              <div className={`rounded-lg border overflow-hidden ${darkMode ? 'border-[#1f2937]' : 'border-[#E3E8EF]'}`}>
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className={`${darkMode ? 'bg-[#0d1117]' : 'bg-[#F9FAFB]'}`}>
+                      <th className={`px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-wide border-b ${darkMode ? 'text-gray-500 border-[#1f2937]' : 'text-[#94A3B8] border-[#E3E8EF]'}`}>Item</th>
+                      <th className={`px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-wide border-b ${darkMode ? 'text-gray-500 border-[#1f2937]' : 'text-[#94A3B8] border-[#E3E8EF]'}`}>Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[
+                      { label: 'Total Sales Amount',       value: formatCurrencyNaira(bSales),    bold: true },
+                      { label: 'Less: Total Product Cost', value: formatCurrencyNaira(bCost) },
+                      { label: 'Less: Delivery Cost',      value: formatCurrencyNaira(bDelivery) },
+                    ].map((row, i) => (
+                      <tr key={i} className={`border-b ${darkMode ? 'border-[#1f2937]' : 'border-[#F1F5F9]'}`}>
+                        <td className={`px-4 py-3 ${row.bold ? `font-semibold ${darkMode?'text-white':'text-[#0F172A]'}` : darkMode?'text-gray-300':'text-[#64748B]'}`}>{row.label}</td>
+                        <td className={`px-4 py-3 text-right tabular-nums ${row.bold ? `font-semibold ${darkMode?'text-white':'text-[#0F172A]'}` : darkMode?'text-gray-300':'text-[#64748B]'}`}>{row.value}</td>
+                      </tr>
+                    ))}
+                  </tbody>
                   <tfoot>
-                    <tr className={`border-t-2 text-xs font-semibold ${darkMode ? 'bg-[#0d1117] border-[#1f2937]' : 'bg-[#F9FAFB] border-[#E3E8EF]'}`}>
-                      <td colSpan="3" className={`px-4 py-3 ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>
-                        Total ({filtered.length} orders)
-                      </td>
-                      <td className={`px-4 py-3 text-right tabular-nums ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>
-                        {filtered.reduce((s, r) => s + r.qty, 0)}
-                      </td>
-                      <td className={`px-4 py-3 text-right tabular-nums text-[#2FB7A1]`}>{formatCurrencyNaira(fSales)}</td>
-                      <td className={`px-4 py-3 text-right tabular-nums ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>{formatCurrencyNaira(fCost)}</td>
-                      <td className={`px-4 py-3 text-right tabular-nums ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>{formatCurrencyNaira(fDelivery)}</td>
-                      <td className={`px-4 py-3 text-right tabular-nums ${fProfit >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>{formatCurrencyNaira(fProfit)}</td>
+                    <tr className={`border-t-2 ${darkMode ? 'bg-[#0d1117] border-[#1f2937]' : 'bg-[#F0FDF9] border-[#2FB7A1]/30'}`}>
+                      <td className={`px-4 py-3 font-bold text-sm ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>Net Profit</td>
+                      <td className={`px-4 py-3 text-right tabular-nums font-bold text-base ${bProfit >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>{formatCurrencyNaira(bProfit)}</td>
                     </tr>
                   </tfoot>
-                )}
-              </table>
-            </div>
-
-            {/* Mobile Cards */}
-            <div className="md:hidden divide-y divide-[#F1F5F9] dark:divide-[#1f2937]">
-              {filtered.length === 0 ? (
-                <p className={`py-10 text-center text-sm ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>No data available</p>
-              ) : filtered.map((row, idx) => {
-                const profit   = row.salesAmount - row.productCost - row.deliveryCost;
-                const isProfit = profit >= 0;
-                const date     = row.date
-                  ? new Date(row.date).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' })
-                  : '—';
-                const isSelected = saleProfitBreakdown?.orderId === row.orderId;
-
-                return (
-                  <div key={idx} onClick={() => fetchSaleProfitBreakdown(row.orderId)}
-                    className={`p-4 cursor-pointer transition ${isSelected ? (darkMode ? 'bg-[#0d1117]' : 'bg-[#F0FDF9]') : (darkMode ? 'hover:bg-[#0d1117]' : 'hover:bg-[#F8FAFC]')}`}>
-                    <div className="flex items-start justify-between mb-2">
-                      <div>
-                        <p className="font-mono text-xs font-semibold text-[#2FB7A1]">{row.orderId}</p>
-                        <p className={`font-semibold text-sm mt-0.5 ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>{row.customer}</p>
-                        <p className={`text-xs mt-0.5 ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>{date} · Qty {row.qty}</p>
-                      </div>
-                      <div className="text-right flex-shrink-0">
-                        <p className={`font-bold text-sm ${isProfit ? 'text-emerald-500' : 'text-red-500'}`}>{formatCurrencyNaira(profit)}</p>
-                        <p className={`text-xs mt-0.5 ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>profit</p>
-                      </div>
-                    </div>
-                    <div className={`grid grid-cols-3 gap-2 mt-2 pt-2 border-t text-xs ${darkMode ? 'border-[#1f2937]' : 'border-[#F1F5F9]'}`}>
-                      {[
-                        { label: 'Sales',    value: formatCurrencyNaira(row.salesAmount) },
-                        { label: 'Cost',     value: formatCurrencyNaira(row.productCost) },
-                        { label: 'Delivery', value: formatCurrencyNaira(row.deliveryCost) },
-                      ].map((s, i) => (
-                        <div key={i}>
-                          <p className={`text-[9px] font-semibold uppercase tracking-wide ${darkMode ? 'text-gray-600' : 'text-[#94A3B8]'}`}>{s.label}</p>
-                          <p className={`font-semibold mt-0.5 ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>{s.value}</p>
-                        </div>
-                      ))}
-                    </div>
-                    {isSelected && <p className="text-[10px] text-[#2FB7A1] mt-2 font-semibold">▼ Breakdown shown above</p>}
-                  </div>
-                );
-              })}
-              {filtered.length > 0 && (
-                <div className={`px-4 py-3 flex justify-between text-xs font-semibold ${darkMode ? 'bg-[#0d1117] text-gray-300' : 'bg-[#F9FAFB] text-[#0F172A]'}`}>
-                  <span>{filtered.length} orders · {filtered.reduce((s,r)=>s+r.qty,0)} units</span>
-                  <span className={fProfit >= 0 ? 'text-emerald-500' : 'text-red-500'}>{formatCurrencyNaira(fProfit)}</span>
-                </div>
-              )}
+                </table>
+              </div>
             </div>
           </div>
-        </>
-      );
-    })()}
+        </div>
+      )}
 
-    {loadingSalesReport && (
-      <div className={`rounded-xl border p-12 text-center ${darkMode ? 'bg-[#111827] border-[#1f2937]' : 'bg-white border-[#E3E8EF]'}`}>
-        <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>Loading profit report…</p>
-      </div>
-    )}
+      {/* Main P&L Table */}
+      {loadingSalesReport ? (
+        <div className={`rounded-xl border p-12 text-center ${darkMode ? 'bg-[#111827] border-[#1f2937]' : 'bg-white border-[#E3E8EF]'}`}>
+          <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>Loading profit report…</p>
+        </div>
+      ) : !salesReportData ? (
+        <div className={`rounded-xl border p-12 text-center ${darkMode ? 'bg-[#111827] border-[#1f2937]' : 'bg-white border-[#E3E8EF]'}`}>
+          <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>No profit data available yet.</p>
+        </div>
+      ) : (
+        <div className={`rounded-xl border overflow-hidden ${darkMode ? 'bg-[#111827] border-[#1f2937]' : 'bg-white border-[#E3E8EF]'}`}>
+          {/* Desktop */}
+          <div className="hidden md:block overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className={`${darkMode ? 'bg-[#0d1117]' : 'bg-[#F9FAFB]'}`}>
+                  {['Sales No','Date','Customer','Qty','Sales Amount','Product Cost','Delivery Cost','Profit'].map((h,i) => (
+                    <th key={i} className={`px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wide border-b ${darkMode ? 'text-gray-500 border-[#1f2937]' : 'text-[#94A3B8] border-[#E3E8EF]'} ${i>=3?'text-right':''}`}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.length === 0 ? (
+                  <tr><td colSpan="8" className={`py-14 text-center text-sm ${darkMode?'text-gray-500':'text-[#94A3B8]'}`}>No data available</td></tr>
+                ) : filtered.map((row, idx) => {
+                  const profit   = row.salesAmount - row.productCost - row.deliveryCost;
+                  const isProfit = profit >= 0;
+                  const isActive = bd?.orderId === row.orderId;
+                  return (
+                    <tr key={idx} onClick={() => fetchSaleProfitBreakdown(row.orderId)}
+                      className={`border-b cursor-pointer transition ${isActive ? (darkMode?'bg-[#0d1117]':'bg-[#F0FDF9]') : (darkMode?'border-[#0d1117] hover:bg-[#0d1117]':'border-[#F8FAFC] hover:bg-[#F0FDF9]')}`}>
+                      <td className="px-4 py-3 font-mono text-xs font-semibold text-[#2FB7A1]">{row.orderId}</td>
+                      <td className={`px-4 py-3 whitespace-nowrap ${darkMode?'text-gray-300':'text-[#0F172A]'}`}>{fmtDate(row.date)}</td>
+                      <td className={`px-4 py-3 font-medium ${darkMode?'text-white':'text-[#0F172A]'}`}>{row.customer}</td>
+                      <td className={`px-4 py-3 text-right tabular-nums ${darkMode?'text-gray-300':'text-[#0F172A]'}`}>{row.qty}</td>
+                      <td className={`px-4 py-3 text-right tabular-nums ${darkMode?'text-gray-300':'text-[#0F172A]'}`}>{formatCurrencyNaira(row.salesAmount)}</td>
+                      <td className={`px-4 py-3 text-right tabular-nums ${darkMode?'text-gray-400':'text-[#64748B]'}`}>{formatCurrencyNaira(row.productCost)}</td>
+                      <td className={`px-4 py-3 text-right tabular-nums ${darkMode?'text-gray-400':'text-[#64748B]'}`}>{formatCurrencyNaira(row.deliveryCost)}</td>
+                      <td className={`px-4 py-3 text-right tabular-nums font-bold ${isProfit?'text-emerald-500':'text-red-500'}`}>{formatCurrencyNaira(profit)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              {filtered.length > 0 && (
+                <tfoot>
+                  <tr className={`border-t-2 text-xs font-semibold ${darkMode?'bg-[#0d1117] border-[#1f2937]':'bg-[#F9FAFB] border-[#E3E8EF]'}`}>
+                    <td colSpan="3" className={`px-4 py-3 ${darkMode?'text-gray-300':'text-[#0F172A]'}`}>Total ({filtered.length} orders)</td>
+                    <td className={`px-4 py-3 text-right tabular-nums ${darkMode?'text-gray-300':'text-[#0F172A]'}`}>{filtered.reduce((s,r)=>s+r.qty,0)}</td>
+                    <td className="px-4 py-3 text-right tabular-nums text-[#2FB7A1]">{formatCurrencyNaira(fSales)}</td>
+                    <td className={`px-4 py-3 text-right tabular-nums ${darkMode?'text-gray-400':'text-[#64748B]'}`}>{formatCurrencyNaira(fCost)}</td>
+                    <td className={`px-4 py-3 text-right tabular-nums ${darkMode?'text-gray-400':'text-[#64748B]'}`}>{formatCurrencyNaira(fDelivery)}</td>
+                    <td className={`px-4 py-3 text-right tabular-nums ${fProfit>=0?'text-emerald-500':'text-red-500'}`}>{formatCurrencyNaira(fProfit)}</td>
+                  </tr>
+                </tfoot>
+              )}
+            </table>
+          </div>
 
-    {!loadingSalesReport && !salesReportData && (
-      <div className={`rounded-xl border p-12 text-center ${darkMode ? 'bg-[#111827] border-[#1f2937]' : 'bg-white border-[#E3E8EF]'}`}>
-        <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>No profit data available yet.</p>
-      </div>
-    )}
-  </div>
-)}
+          {/* Mobile Cards */}
+          <div className="md:hidden divide-y divide-[#F1F5F9] dark:divide-[#1f2937]">
+            {filtered.length === 0 ? (
+              <p className={`py-10 text-center text-sm ${darkMode?'text-gray-500':'text-[#94A3B8]'}`}>No data available</p>
+            ) : filtered.map((row, idx) => {
+              const profit   = row.salesAmount - row.productCost - row.deliveryCost;
+              const isProfit = profit >= 0;
+              const isActive = bd?.orderId === row.orderId;
+              return (
+                <div key={idx} onClick={() => fetchSaleProfitBreakdown(row.orderId)}
+                  className={`p-4 cursor-pointer transition ${isActive?(darkMode?'bg-[#0d1117]':'bg-[#F0FDF9]'):(darkMode?'hover:bg-[#0d1117]':'hover:bg-[#F8FAFC]')}`}>
+                  <div className="flex items-start justify-between mb-2">
+                    <div>
+                      <p className="font-mono text-xs font-semibold text-[#2FB7A1]">{row.orderId}</p>
+                      <p className={`font-semibold text-sm mt-0.5 ${darkMode?'text-white':'text-[#0F172A]'}`}>{row.customer}</p>
+                      <p className={`text-xs mt-0.5 ${darkMode?'text-gray-500':'text-[#94A3B8]'}`}>{fmtDate(row.date)} · Qty {row.qty}</p>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <p className={`font-bold text-sm ${isProfit?'text-emerald-500':'text-red-500'}`}>{formatCurrencyNaira(profit)}</p>
+                      <p className={`text-xs mt-0.5 ${darkMode?'text-gray-500':'text-[#94A3B8]'}`}>profit</p>
+                    </div>
+                  </div>
+                  <div className={`grid grid-cols-3 gap-2 mt-2 pt-2 border-t text-xs ${darkMode?'border-[#1f2937]':'border-[#F1F5F9]'}`}>
+                    {[
+                      { label:'Sales',    value: formatCurrencyNaira(row.salesAmount) },
+                      { label:'Cost',     value: formatCurrencyNaira(row.productCost) },
+                      { label:'Delivery', value: formatCurrencyNaira(row.deliveryCost) },
+                    ].map((s,i) => (
+                      <div key={i}>
+                        <p className={`text-[9px] font-semibold uppercase tracking-wide ${darkMode?'text-gray-600':'text-[#94A3B8]'}`}>{s.label}</p>
+                        <p className={`font-semibold mt-0.5 ${darkMode?'text-gray-300':'text-[#0F172A]'}`}>{s.value}</p>
+                      </div>
+                    ))}
+                  </div>
+                  {isActive && <p className="text-[10px] text-[#2FB7A1] mt-2 font-semibold">▼ Breakdown shown above</p>}
+                </div>
+              );
+            })}
+            {filtered.length > 0 && (
+              <div className={`px-4 py-3 flex justify-between text-xs font-semibold ${darkMode?'bg-[#0d1117] text-gray-300':'bg-[#F9FAFB] text-[#0F172A]'}`}>
+                <span>{filtered.length} orders · {filtered.reduce((s,r)=>s+r.qty,0)} units</span>
+                <span className={fProfit>=0?'text-emerald-500':'text-red-500'}>{formatCurrencyNaira(fProfit)}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+})()}
                 {/* Stock Movement Report */}
                 {activeReportTab === 'stockMovement' && (
                   <div>
