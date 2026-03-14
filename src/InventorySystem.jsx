@@ -291,7 +291,7 @@ const InventorySystem = ({ onLogout }) => {
     const formData = new FormData();
     formData.append('file', file);
   
-    const res = await fetch('http://localhost:5000/api/upload', {
+    const res = await fetch(`${API_BASE_URL}/upload`, {
       method: 'POST',
       body: formData,
     });
@@ -5633,13 +5633,12 @@ const InventorySystem = ({ onLogout }) => {
           }}
           onInput={(e) => {
             const form = e.currentTarget;
-            // Grab the FIRST matching element regardless of responsive variant
-            const totalAmountPaidInput = form.querySelector('[id^="total-amount-paid-input"]');
-            const shippingInput = form.querySelector('[id^="shipping-input"]');
-            const totalCostDisplay = form.querySelector('[id^="total-cost-display"]');
-            const costInput = form.querySelector('[name="cost"]');
-            const priceInput = form.querySelector('[id^="price-input"]');
+            const totalAmountPaidInput = form.querySelector('#total-amount-paid-input');
+            const shippingInput = form.querySelector('#shipping-input');
+            const costInput = form.querySelector('#cost-input');
+            const priceInput = form.querySelector('#price-input');
             const quantityInput = form.querySelector('[name="quantity"]');
+            const totalCostDisplay = form.querySelector('#total-cost-display');
             const profitPerUnitDisplay = form.querySelector('#profit-per-unit-display');
             const totalProfitDisplay = form.querySelector('#total-profit-display');
           
@@ -5650,10 +5649,8 @@ const InventorySystem = ({ onLogout }) => {
             const totalCost = totalAmountPaid + shipping;
             const costPerUnit = quantity > 0 ? totalCost / quantity : 0;
           
-            // Update all visible total-cost displays
-            form.querySelectorAll('[id^="total-cost-display"]').forEach(el => { el.value = totalCost.toFixed(2); });
-            // Update all cost inputs (they are readOnly so name="cost" is safe)
-            form.querySelectorAll('[name="cost"]').forEach(el => { el.value = costPerUnit.toFixed(2); });
+            if (totalCostDisplay) totalCostDisplay.value = totalCost.toFixed(2);
+            if (costInput) costInput.value = costPerUnit.toFixed(2);
           
             const price = parseCommaNumber(priceInput?.value || '0');
             const profitPerUnit = price - costPerUnit;
@@ -5662,14 +5659,18 @@ const InventorySystem = ({ onLogout }) => {
             if (profitPerUnitDisplay) {
               profitPerUnitDisplay.value = profitPerUnit.toFixed(2);
               profitPerUnitDisplay.className = profitPerUnitDisplay.className
-                .replace(/text-(red|green)-\d+/g, '') +
-                (profitPerUnit >= 0 ? (darkMode ? ' text-green-400' : ' text-green-600') : (darkMode ? ' text-red-400' : ' text-red-600'));
+                .replace(/text-(red|green)-\d+/g, '')
+                + (profitPerUnit >= 0
+                  ? (darkMode ? ' text-green-400' : ' text-green-600')
+                  : (darkMode ? ' text-red-400' : ' text-red-600'));
             }
             if (totalProfitDisplay) {
               totalProfitDisplay.value = totalProfit.toFixed(2);
               totalProfitDisplay.className = totalProfitDisplay.className
-                .replace(/text-(red|green)-\d+/g, '') +
-                (totalProfit >= 0 ? (darkMode ? ' text-green-400' : ' text-green-600') : (darkMode ? ' text-red-400' : ' text-red-600'));
+                .replace(/text-(red|green)-\d+/g, '')
+                + (totalProfit >= 0
+                  ? (darkMode ? ' text-green-400' : ' text-green-600')
+                  : (darkMode ? ' text-red-400' : ' text-red-600'));
             }
           }}>
  
@@ -6051,54 +6052,61 @@ const InventorySystem = ({ onLogout }) => {
   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
 
     {/* 1 — Total Amount Paid */}
-    <div>
-      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-        Total Amount Paid <span className="text-red-500">*</span>
-      </label>
-      <div className="relative">
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400">$</span>
-        <input
-          name="totalAmountPaid"
-          id="total-amount-paid-input-mobile"
-          type="text"
-          inputMode="decimal"
-          placeholder="0.00"
-          onInput={(e) => { e.target.value = formatWithCommas(e.target.value); e.target.form?.dispatchEvent(new Event('input', { bubbles: true })); }}
-          className={`w-full pl-8 pr-4 py-3 border rounded-lg transition-all ${
-            darkMode
-              ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white placeholder-gray-400 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
-              : 'bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
-          }`}
-        />
-      </div>
+{/* Total Amount Paid */}
+    <div className="sm:col-span-1 lg:col-span-1">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Total Amount Paid <span className="text-red-500">*</span>
+          </label>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400">$</span>
+            <input
+              name="totalAmountPaid"
+              id="total-amount-paid-input"
+              type="text"
+              inputMode="decimal"
+              placeholder="0.00"
+              onInput={(e) => {
+                e.target.value = formatWithCommas(e.target.value);
+                e.target.form?.dispatchEvent(new Event('input', { bubbles: true }));
+              }}
+              className={`w-full pl-8 pr-4 py-3 border rounded-lg transition-all ${
+                darkMode
+                  ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white placeholder-gray-400 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
+                  : 'bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
+              }`}
+            />
+          </div>
     </div>
 
-    {/* 2 — Delivery Cost */}
-    <div>
-      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-        Delivery Cost
-      </label>
-      <div className="relative">
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400">$</span>
-        <input
-          name="shippingCost"
-          id="shipping-input-tablet"
-          type="text"
-          inputMode="decimal"
-          placeholder="0.00"
-          defaultValue="0"
-          onInput={(e) => { e.target.value = formatWithCommas(e.target.value); e.target.form?.dispatchEvent(new Event('input', { bubbles: true })); }}
-          className={`w-full pl-8 pr-3 py-3 border rounded-lg transition-all text-sm ${
-            darkMode
-              ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white placeholder-gray-400 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
-              : 'bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
-          }`}
-        />
-      </div>
-    </div>
+      {/* Delivery Cost */}
+      <div className="sm:col-span-1 lg:col-span-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Delivery Cost
+            </label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400">$</span>
+              <input
+                name="shippingCost"
+                id="shipping-input"
+                type="text"
+                inputMode="decimal"
+                placeholder="0.00"
+                defaultValue="0"
+                onInput={(e) => {
+                  e.target.value = formatWithCommas(e.target.value);
+                  e.target.form?.dispatchEvent(new Event('input', { bubbles: true }));
+                }}
+                className={`w-full pl-8 pr-3 py-3 border rounded-lg transition-all text-sm ${
+                  darkMode
+                    ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white placeholder-gray-400 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
+                    : 'bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
+                }`}
+              />
+            </div>
+          </div>
 
-    {/* 3 — Total Cost (auto) */}
-    <div>
+    {/* Total Cost (auto) */}
+    <div className="sm:col-span-1 lg:col-span-1">
       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
         Total Cost <span className="text-xs font-normal text-gray-400">(auto)</span>
       </label>
@@ -6118,8 +6126,8 @@ const InventorySystem = ({ onLogout }) => {
       </div>
     </div>
 
-    {/* 4 — Cost per Unit (auto) */}
-    <div>
+        {/* Cost per Unit (auto) */}
+        <div className="sm:col-span-1 lg:col-span-1">
       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
         Cost / Unit <span className="text-xs font-normal text-gray-400">(auto)</span>
       </label>
@@ -6140,8 +6148,9 @@ const InventorySystem = ({ onLogout }) => {
       </div>
     </div>
 
-    {/* 5 — Selling Price */}
-    <div className="col-span-2 sm:col-span-3 lg:col-span-1">
+
+{/* Selling Price */}
+<div className="sm:col-span-2 lg:col-span-1">
       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
         Selling Price <span className="text-red-500">*</span>
       </label>
@@ -6149,19 +6158,14 @@ const InventorySystem = ({ onLogout }) => {
         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400">$</span>
         <input
           name="price"
-          id="price-input-desktop"
+          id="price-input"
           type="text"
-          step="0.01"
-          min="0"
+          inputMode="decimal"
           placeholder="0.00"
           onInput={(e) => {
-            const raw = e.target.value.replace(/,/g, '').replace(/[^0-9.]/g, '');
-            const parts = raw.split('.');
-            parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-            e.target.value = parts.join('.');
+            e.target.value = formatWithCommas(e.target.value);
             e.target.form?.dispatchEvent(new Event('input', { bubbles: true }));
           }}
-
           className={`w-full pl-8 pr-3 py-3 border rounded-lg transition-all text-sm ${
             darkMode
               ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white placeholder-gray-400 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
