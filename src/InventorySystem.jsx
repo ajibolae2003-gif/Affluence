@@ -5485,145 +5485,275 @@ const InventorySystem = ({ onLogout }) => {
   );
 })()}
                 {/* Stock Movement Report */}
-                {activeReportTab === 'stockMovement' && (
-                  <div>
-                    <div className="bg-white dark:bg-[#1A1A1A] rounded-xl shadow-sm border border-[#E3E8EF] dark:border-[#2A2A2A] p-4 mb-6">
-                      <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-                        <div>
-                          <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">From</label>
-                          <input
-                            type="date"
-                            value={stockMovementFromDate}
-                            onChange={(e) => setStockMovementFromDate(e.target.value)}
-                            className="w-full px-3 py-2 rounded-lg text-sm border border-[#E5E7EB] dark:border-[#2A2A2A] focus:ring-2 focus:ring-[#2FB7A1] bg-white dark:bg-[#1A1A1A] text-[#0F172A] dark:text-white"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">To</label>
-                          <input
-                            type="date"
-                            value={stockMovementToDate}
-                            onChange={(e) => setStockMovementToDate(e.target.value)}
-                            className="w-full px-3 py-2 rounded-lg text-sm border border-[#E5E7EB] dark:border-[#2A2A2A] focus:ring-2 focus:ring-[#2FB7A1] bg-white dark:bg-[#1A1A1A] text-[#0F172A] dark:text-white"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Product</label>
-                          <select
-                            value={stockMovementProductFilter}
-                            onChange={(e) => setStockMovementProductFilter(e.target.value)}
-                            className="w-full px-3 py-2 rounded-lg text-sm border border-[#E5E7EB] dark:border-[#2A2A2A] focus:ring-2 focus:ring-[#2FB7A1] bg-white dark:bg-[#1A1A1A] text-[#0F172A] dark:text-white"
-                          >
-                            <option value="">All Products</option>
-                            {inventory.map((item) => (
-                              <option key={item.id} value={item.id}>
-                                {item.name}
-                              </option>
+                {activeReportTab === 'stockMovement' && (() => {
+            // ── Data processing outside JSX ──
+            const movements = stockMovements || [];
+
+            const totalIn     = movements.filter(m => m.direction === 'in'  || m.transactionType === 'Stock Received').reduce((s, m) => s + Math.abs(m.quantityChange || m.quantity || 0), 0);
+            const totalOut    = movements.filter(m => m.direction === 'out' || m.transactionType === 'Sale').reduce((s, m) => s + Math.abs(m.quantityChange || m.quantity || 0), 0);
+            const totalAdjust = movements.filter(m => m.direction === 'adjust' || m.transactionType === 'Adjustment').reduce((s, m) => s + Math.abs(m.quantityChange || m.quantity || 0), 0);
+
+            const getDirection = (m) => {
+              if (m.direction) return m.direction;
+              const t = (m.transactionType || '').toLowerCase();
+              if (t.includes('received') || t.includes('in')) return 'in';
+              if (t.includes('sale') || t.includes('out'))    return 'out';
+              return 'adjust';
+            };
+
+            const getLabel = (m) => {
+              if (m.transactionType) return m.transactionType;
+              const d = getDirection(m);
+              if (d === 'in')     return 'Stock Received';
+              if (d === 'out')    return 'Sale';
+              return 'Adjustment';
+            };
+
+            const fmtDate = (val) => {
+              if (!val) return '—';
+              const d = new Date(val);
+              return isNaN(d) ? String(val) : d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+            };
+
+            return (
+              <div>
+                {/* Summary Cards */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                  {[
+                    { label: 'Total Movements', value: movements.length,           accent: '#3B82F6' },
+                    { label: 'Stock In',        value: `+${totalIn.toLocaleString()}`,  accent: '#10B981' },
+                    { label: 'Stock Out',       value: `-${totalOut.toLocaleString()}`,  accent: '#EF4444' },
+                    { label: 'Adjustments',     value: totalAdjust.toLocaleString(),     accent: '#F59E0B' },
+                  ].map((card, i) => (
+                    <div key={i} className={`rounded-xl border p-5 flex items-center gap-3 ${darkMode ? 'bg-[#111827] border-[#1f2937]' : 'bg-white border-[#E3E8EF]'}`}>
+                      <div className="w-1 h-9 rounded-full flex-shrink-0" style={{ background: card.accent }} />
+                      <div>
+                        <p className={`text-[10px] font-semibold uppercase tracking-wide mb-0.5 ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>{card.label}</p>
+                        <p className="text-xl font-bold" style={{ color: card.accent }}>{card.value}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Filters */}
+                <div className={`rounded-xl border p-4 mb-5 ${darkMode ? 'bg-[#111827] border-[#1f2937]' : 'bg-white border-[#E3E8EF]'}`}>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div>
+                      <label className={`block text-xs font-medium mb-1 ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>From</label>
+                      <input type="date" value={stockMovementFromDate} onChange={e => setStockMovementFromDate(e.target.value)}
+                        className={`w-full px-3 py-2 rounded-lg text-sm border focus:ring-2 focus:ring-[#2FB7A1] ${darkMode ? 'bg-[#0d1117] border-[#1f2937] text-white' : 'bg-white border-[#E3E8EF] text-[#0F172A]'}`} />
+                    </div>
+                    <div>
+                      <label className={`block text-xs font-medium mb-1 ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>To</label>
+                      <input type="date" value={stockMovementToDate} onChange={e => setStockMovementToDate(e.target.value)}
+                        className={`w-full px-3 py-2 rounded-lg text-sm border focus:ring-2 focus:ring-[#2FB7A1] ${darkMode ? 'bg-[#0d1117] border-[#1f2937] text-white' : 'bg-white border-[#E3E8EF] text-[#0F172A]'}`} />
+                    </div>
+                    <div>
+                      <label className={`block text-xs font-medium mb-1 ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>Product</label>
+                      <select value={stockMovementProductFilter} onChange={e => setStockMovementProductFilter(e.target.value)}
+                        className={`w-full px-3 py-2 rounded-lg text-sm border focus:ring-2 focus:ring-[#2FB7A1] ${darkMode ? 'bg-[#0d1117] border-[#1f2937] text-white' : 'bg-white border-[#E3E8EF] text-[#0F172A]'}`}>
+                        <option value="">All Products</option>
+                        {inventory.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className={`block text-xs font-medium mb-1 ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>Type</label>
+                      <select value={stockMovementTypeFilter} onChange={e => setStockMovementTypeFilter(e.target.value)}
+                        className={`w-full px-3 py-2 rounded-lg text-sm border focus:ring-2 focus:ring-[#2FB7A1] ${darkMode ? 'bg-[#0d1117] border-[#1f2937] text-white' : 'bg-white border-[#E3E8EF] text-[#0F172A]'}`}>
+                        <option value="all">All Types</option>
+                        <option value="in">Stock Received</option>
+                        <option value="out">Sale</option>
+                        <option value="adjust">Adjustment</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="mt-3 flex items-center justify-between">
+                    <button onClick={() => { setStockMovementFromDate(''); setStockMovementToDate(''); setStockMovementProductFilter(''); setStockMovementTypeFilter('all'); }}
+                      className={`text-xs px-3 py-1.5 rounded-lg border transition ${darkMode ? 'border-[#1f2937] text-gray-400 hover:bg-[#1f2937]' : 'border-[#E3E8EF] text-[#64748B] hover:bg-gray-50'}`}>
+                      Clear Filters
+                    </button>
+                    {/* Export CSV */}
+                    <button onClick={() => {
+                      const csv = [
+                        ['Date', 'Product', 'Transaction Type', 'Qty Change', 'Batch No'].join(','),
+                        ...movements.map(m => {
+                          const dir = getDirection(m);
+                          const sign = dir === 'in' ? '+' : dir === 'out' ? '-' : '';
+                          return [
+                            fmtDate(m.date || m.timestamp),
+                            m.productName || m.productId || '—',
+                            getLabel(m),
+                            sign + Math.abs(m.quantityChange || m.quantity || 0),
+                            m.batchId || m.batchNumber || '—',
+                          ].join(',');
+                        })
+                      ].join('\n');
+                      const blob = new Blob([csv], { type: 'text/csv' });
+                      const url  = window.URL.createObjectURL(blob);
+                      const a    = document.createElement('a');
+                      a.href     = url;
+                      a.download = `stock-movement-${new Date().toISOString().split('T')[0]}.csv`;
+                      a.click();
+                    }}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#2FB7A1] text-white rounded-lg hover:bg-[#28a085] transition">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                      Export CSV
+                    </button>
+                  </div>
+                </div>
+
+                {/* Table */}
+                {loadingStockMovements ? (
+                  <div className={`rounded-xl border p-12 text-center ${darkMode ? 'bg-[#111827] border-[#1f2937]' : 'bg-white border-[#E3E8EF]'}`}>
+                    <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>Loading stock movements…</p>
+                  </div>
+                ) : movements.length === 0 ? (
+                  <div className={`rounded-xl border p-12 text-center ${darkMode ? 'bg-[#111827] border-[#1f2937]' : 'bg-white border-[#E3E8EF]'}`}>
+                    <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>No stock movements found.</p>
+                  </div>
+                ) : (
+                  <div className={`rounded-xl border overflow-hidden ${darkMode ? 'bg-[#111827] border-[#1f2937]' : 'bg-white border-[#E3E8EF]'}`}>
+
+                    {/* Desktop */}
+                    <div className="hidden md:block overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className={`${darkMode ? 'bg-[#0d1117]' : 'bg-[#F9FAFB]'}`}>
+                            {['Date', 'Product', 'Transaction Type', 'Qty Change', 'Batch No'].map((h, i) => (
+                              <th key={i} className={`px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wide border-b ${darkMode ? 'text-gray-500 border-[#1f2937]' : 'text-[#94A3B8] border-[#E3E8EF]'} ${i === 3 ? 'text-right' : ''}`}>
+                                {h}
+                              </th>
                             ))}
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Transaction Type</label>
-                          <select
-                            value={stockMovementTypeFilter}
-                            onChange={(e) => setStockMovementTypeFilter(e.target.value)}
-                            className="w-full px-3 py-2 rounded-lg text-sm border border-[#E5E7EB] dark:border-[#2A2A2A] focus:ring-2 focus:ring-[#2FB7A1] bg-white dark:bg-[#1A1A1A] text-[#0F172A] dark:text-white"
-                          >
-                            <option value="all">All</option>
-                            <option value="in">Stock Received</option>
-                            <option value="out">Sale</option>
-                            <option value="adjust">Adjustment</option>
-                          </select>
-                        </div>
-                        <div className="flex items-end">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setStockMovementFromDate('');
-                              setStockMovementToDate('');
-                              setStockMovementProductFilter('');
-                              setStockMovementTypeFilter('all');
-                            }}
-                            className="w-full px-4 py-2 border border-[#E3E8EF] dark:border-[#2A2A2A] rounded-lg text-sm text-[#64748B] dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#2A2A2A] transition"
-                          >
-                            Clear Filters
-                          </button>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {movements.map((m, idx) => {
+                            const dir   = getDirection(m);
+                            const label = getLabel(m);
+                            const qty   = Math.abs(m.quantityChange || m.quantity || 0);
+                            const sign  = dir === 'in' ? '+' : dir === 'out' ? '-' : '±';
+
+                            const typeCfg = {
+                              in:     { cls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300', dot: 'bg-emerald-500' },
+                              out:    { cls: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',                 dot: 'bg-red-500'     },
+                              adjust: { cls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',         dot: 'bg-amber-500'   },
+                            };
+                            const tc = typeCfg[dir] || typeCfg.adjust;
+
+                            return (
+                              <tr key={m.id || idx}
+                                className={`border-b transition ${darkMode ? 'border-[#0d1117] hover:bg-[#0d1117]' : 'border-[#F8FAFC] hover:bg-[#F8FAFC]'}`}>
+                                <td className={`px-4 py-3 whitespace-nowrap ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>
+                                  {fmtDate(m.date || m.timestamp)}
+                                </td>
+                                <td className={`px-4 py-3 font-medium ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>
+                                  {m.productName || m.productId || '—'}
+                                </td>
+                                <td className="px-4 py-3">
+                                  <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-full ${tc.cls}`}>
+                                    <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${tc.dot}`} />
+                                    {label}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 text-right">
+                                  <span className={`font-bold tabular-nums text-base ${
+                                    dir === 'in'  ? 'text-emerald-500' :
+                                    dir === 'out' ? 'text-red-500' :
+                                    'text-amber-500'
+                                  }`}>
+                                    {sign}{qty.toLocaleString()}
+                                  </span>
+                                </td>
+                                <td className={`px-4 py-3 font-mono text-xs ${darkMode ? 'text-[#2FB7A1]' : 'text-[#2FB7A1]'}`}>
+                                  {m.batchId || m.batchNumber || '—'}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                        <tfoot>
+                          <tr className={`border-t-2 text-xs font-semibold ${darkMode ? 'bg-[#0d1117] border-[#1f2937]' : 'bg-[#F9FAFB] border-[#E3E8EF]'}`}>
+                            <td colSpan="2" className={`px-4 py-3 ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>
+                              {movements.length} movements
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-3 text-[10px]">
+                                <span className="text-emerald-500 font-bold">+{totalIn.toLocaleString()} in</span>
+                                <span className="text-red-500 font-bold">-{totalOut.toLocaleString()} out</span>
+                                {totalAdjust > 0 && <span className="text-amber-500 font-bold">±{totalAdjust.toLocaleString()} adj</span>}
+                              </div>
+                            </td>
+                            <td className={`px-4 py-3 text-right tabular-nums ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>
+                              <span className="text-emerald-500">+{totalIn.toLocaleString()}</span>
+                              <span className={`mx-1 ${darkMode ? 'text-gray-600' : 'text-[#CBD5E1]'}`}>/</span>
+                              <span className="text-red-500">-{totalOut.toLocaleString()}</span>
+                            </td>
+                            <td />
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+
+                    {/* Mobile Cards */}
+                    <div className="md:hidden divide-y divide-[#F1F5F9] dark:divide-[#1f2937]">
+                      {movements.map((m, idx) => {
+                        const dir   = getDirection(m);
+                        const label = getLabel(m);
+                        const qty   = Math.abs(m.quantityChange || m.quantity || 0);
+                        const sign  = dir === 'in' ? '+' : dir === 'out' ? '-' : '±';
+
+                        const dotColor = dir === 'in' ? 'bg-emerald-500' : dir === 'out' ? 'bg-red-500' : 'bg-amber-500';
+                        const qtyColor = dir === 'in' ? 'text-emerald-500' : dir === 'out' ? 'text-red-500' : 'text-amber-500';
+                        const badgeCls = dir === 'in'
+                          ? 'bg-emerald-100 text-emerald-700'
+                          : dir === 'out'
+                          ? 'bg-red-100 text-red-700'
+                          : 'bg-amber-100 text-amber-700';
+
+                        return (
+                          <div key={m.id || idx} className={`p-4 ${darkMode ? 'hover:bg-[#0d1117]' : 'hover:bg-[#F8FAFC]'} transition`}>
+                            <div className="flex items-start justify-between">
+                              <div className="flex items-start gap-3">
+                                {/* Timeline dot */}
+                                <div className={`w-2.5 h-2.5 rounded-full mt-1 flex-shrink-0 ${dotColor}`} />
+                                <div>
+                                  <p className={`font-semibold text-sm ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>
+                                    {m.productName || m.productId || '—'}
+                                  </p>
+                                  <p className={`text-xs mt-0.5 ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>
+                                    {fmtDate(m.date || m.timestamp)}
+                                    {(m.batchId || m.batchNumber) && (
+                                      <span className="font-mono ml-2 text-[#2FB7A1]">{m.batchId || m.batchNumber}</span>
+                                    )}
+                                  </p>
+                                  <span className={`inline-block mt-1.5 text-[10px] font-bold px-2 py-0.5 rounded-full ${badgeCls}`}>
+                                    {label}
+                                  </span>
+                                </div>
+                              </div>
+                              <p className={`font-bold text-lg flex-shrink-0 ${qtyColor}`}>
+                                {sign}{qty.toLocaleString()}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                      {/* Mobile footer */}
+                      <div className={`px-4 py-3 flex justify-between text-xs font-semibold ${darkMode ? 'bg-[#0d1117] text-gray-300' : 'bg-[#F9FAFB] text-[#0F172A]'}`}>
+                        <span>{movements.length} movements</span>
+                        <div className="flex items-center gap-3">
+                          <span className="text-emerald-500">+{totalIn.toLocaleString()}</span>
+                          <span className="text-red-500">-{totalOut.toLocaleString()}</span>
+                          {totalAdjust > 0 && <span className="text-amber-500">±{totalAdjust.toLocaleString()}</span>}
                         </div>
                       </div>
                     </div>
-
-                    <div className="bg-white dark:bg-[#1A1A1A] rounded-xl shadow-sm border border-[#E3E8EF] dark:border-[#2A2A2A] p-6">
-                      {loadingStockMovements ? (
-                        <p className="text-center text-[#64748B] dark:text-gray-400 py-8">
-                          Loading stock movements...
-                        </p>
-                      ) : stockMovements.length === 0 ? (
-                        <p className="text-center text-[#64748B] dark:text-gray-400 py-8">
-                          No stock movement data available
-                        </p>
-                      ) : (
-                        <div className="overflow-x-auto">
-                          <table className="w-full text-sm">
-                            <thead>
-                              <tr className="border-b border-[#E5E7EB] dark:border-[#2A2A2A] bg-[#F9FAFB] dark:bg-[#2A2A2A]">
-                                <th className="text-left px-4 py-3 text-xs font-semibold text-[#64748B] dark:text-gray-400 uppercase">
-                                  Date
-                                </th>
-                                <th className="text-left px-4 py-3 text-xs font-semibold text-[#64748B] dark:text-gray-400 uppercase">
-                                  Product
-                                </th>
-                                <th className="text-left px-4 py-3 text-xs font-semibold text-[#64748B] dark:text-gray-400 uppercase">
-                                  Transaction Type
-                                </th>
-                                <th className="text-right px-4 py-3 text-xs font-semibold text-[#64748B] dark:text-gray-400 uppercase">
-                                  Quantity Change
-                                </th>
-                                <th className="text-left px-4 py-3 text-xs font-semibold text-[#64748B] dark:text-gray-400 uppercase">
-                                  Batch Number
-                                </th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {stockMovements.map((mvt, idx) => {
-                                const sign = mvt.direction === 'in' ? '+' : mvt.direction === 'out' ? '-' : '';
-                                const typeLabel =
-                                  mvt.transactionType ||
-                                  (mvt.direction === 'in'
-                                    ? 'Stock Received'
-                                    : mvt.direction === 'out'
-                                    ? 'Sale'
-                                    : 'Adjustment');
-                                return (
-                                  <tr
-                                    key={mvt.id || idx}
-                                    className="border-b border-[#F1F5F9] dark:border-[#2A2A2A] hover:bg-[#F9FAFB] dark:hover:bg-[#2A2A2A]"
-                                  >
-                                    <td className="px-4 py-3 text-[#0F172A] dark:text-white">
-                                      {formatReportDate(mvt.date || mvt.timestamp)}
-                                    </td>
-                                    <td className="px-4 py-3 text-[#0F172A] dark:text-white">
-                                      {mvt.productName || mvt.productId}
-                                    </td>
-                                    <td className="px-4 py-3 text-[#0F172A] dark:text-white">
-                                      {typeLabel}
-                                    </td>
-                                    <td className="px-4 py-3 text-right font-mono text-[#0F172A] dark:text-white">
-                                      {sign}
-                                      {mvt.quantityChange || mvt.quantity || 0}
-                                    </td>
-                                    <td className="px-4 py-3 text-[#64748B] dark:text-gray-400 font-mono text-xs">
-                                      {mvt.batchId || mvt.batchNumber || '—'}
-                                    </td>
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
-                      )}
-                    </div>
                   </div>
                 )}
+              </div>
+            );
+          })()}
 
                 {/* Price Change Log */}
                 {activeReportTab === 'priceLog' && (
