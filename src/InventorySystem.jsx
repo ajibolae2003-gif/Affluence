@@ -6146,8 +6146,8 @@ const InventorySystem = ({ onLogout }) => {
       <div className="relative">
         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400">$</span>
         <input
-          name="text"
-          id="price-input"
+          name="price"
+          id="price-input-desktop"
           type="text"
           step="0.01"
           min="0"
@@ -6157,6 +6157,7 @@ const InventorySystem = ({ onLogout }) => {
             const parts = raw.split('.');
             parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
             e.target.value = parts.join('.');
+            e.target.form?.dispatchEvent(new Event('input', { bubbles: true }));
           }}
 
           className={`w-full pl-8 pr-3 py-3 border rounded-lg transition-all text-sm ${
@@ -6269,7 +6270,7 @@ const InventorySystem = ({ onLogout }) => {
                         <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400">$</span>
                         <input
                           name="price"
-                          id="price-input"
+                          id="price-input-desktop"
                           type="text"
                           inputMode="decimal"
                           placeholder="0.00"
