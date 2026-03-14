@@ -158,6 +158,13 @@ const InventorySystem = ({ onLogout }) => {
   const [newCategoryName, setNewCategoryName] = useState('');
   const [newCategoryId, setNewCategoryId] = useState('');
   const [newProductTemplateName, setNewProductTemplateName] = useState('');
+  const [crSortField, setCrSortFieldState] = useState('packs');
+  const [crSortDir,   setCrSortDir]         = useState(-1);
+
+  const setCrSort = (field) => {
+    if (crSortField === field) setCrSortDir(d => d * -1);
+    else { setCrSortFieldState(field); setCrSortDir(-1); }
+  };
   const [newProductTemplateId, setNewProductTemplateId] = useState('');
   const [newProductTemplateCategory, setNewProductTemplateCategory] = useState('');
   const [selectedCustomerData, setSelectedCustomerData] = useState(null);
@@ -4237,318 +4244,288 @@ const InventorySystem = ({ onLogout }) => {
                   </div>
                 </div>
 
-                {/* Customer Report */}
                 {activeReportTab === 'customer' && (
-                  <div>
-                    {/* Summary Cards */}
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                      <div className="bg-white dark:bg-[#1A1A1A] rounded-xl shadow-sm border border-[#E3E8EF] dark:border-[#2A2A2A] p-6">
-                        <p className="text-sm text-[#64748B] dark:text-gray-400 mb-2">Total Customers</p>
-                        <p className="text-2xl font-semibold text-[#0F172A] dark:text-white">{customerReportData.length}</p>
-                      </div>
-                      <div className="bg-white dark:bg-[#1A1A1A] rounded-xl shadow-sm border border-[#E3E8EF] dark:border-[#2A2A2A] p-6">
-                        <p className="text-sm text-[#64748B] dark:text-gray-400 mb-2">Total Revenue</p>
-                        <p className="text-2xl font-semibold text-[#0F172A] dark:text-white">
-                          {formatCurrencyNaira(customerReportData.reduce((sum, c) => sum + c.totalSpent, 0))}
-                        </p>
-                      </div>
-                      <div className="bg-white dark:bg-[#1A1A1A] rounded-xl shadow-sm border border-[#E3E8EF] dark:border-[#2A2A2A] p-6">
-                        <p className="text-sm text-[#64748B] dark:text-gray-400 mb-2">Total Quantity Purchased</p>
-                        <p className="text-2xl font-semibold text-[#0F172A] dark:text-white">
-                          {customerReportData.reduce((sum, c) => sum + c.totalQuantity, 0)}
-                        </p>
-                      </div>
-                      <div className="bg-white dark:bg-[#1A1A1A] rounded-xl shadow-sm border border-[#E3E8EF] dark:border-[#2A2A2A] p-6">
-                        <p className="text-sm text-[#64748B] dark:text-gray-400 mb-2">Average Order Value</p>
-                        <p className="text-2xl font-semibold text-[#0F172A] dark:text-white">
-                          ${customerReportData.length > 0 ? (customerReportData.reduce((sum, c) => sum + c.totalSpent, 0) / customerReportData.reduce((sum, c) => sum + c.totalOrders, 1)).toFixed(2) : '0.00'}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Filter Bar */}
-                    <div className="bg-white dark:bg-[#1A1A1A] rounded-xl shadow-sm border border-[#E3E8EF] dark:border-[#2A2A2A] p-4 mb-6">
-                      <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
-                        <div>
-                          <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Date From</label>
-                          <input
-                            type="date"
-                            value={reportCustomerFromDate}
-                            onChange={(e) => setReportCustomerFromDate(e.target.value)}
-                            className="w-full px-3 py-2 rounded-lg text-sm border border-[#E5E7EB] dark:border-[#2A2A2A] focus:ring-2 focus:ring-[#2FB7A1] bg-white dark:bg-[#1A1A1A] text-[#0F172A] dark:text-white"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Date To</label>
-                          <input
-                            type="date"
-                            value={reportCustomerToDate}
-                            onChange={(e) => setReportCustomerToDate(e.target.value)}
-                            className="w-full px-3 py-2 rounded-lg text-sm border border-[#E5E7EB] dark:border-[#2A2A2A] focus:ring-2 focus:ring-[#2FB7A1] bg-white dark:bg-[#1A1A1A] text-[#0F172A] dark:text-white"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Min Qty</label>
-                          <input
-                            type="number"
-                            placeholder="Min"
-                            className="w-full px-3 py-2 rounded-lg text-sm border border-[#E5E7EB] dark:border-[#2A2A2A] focus:ring-2 focus:ring-[#2FB7A1] bg-white dark:bg-[#1A1A1A] text-[#0F172A] dark:text-white"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Max Qty</label>
-                          <input
-                            type="number"
-                            placeholder="Max"
-                            className="w-full px-3 py-2 rounded-lg text-sm border border-[#E5E7EB] dark:border-[#2A2A2A] focus:ring-2 focus:ring-[#2FB7A1] bg-white dark:bg-[#1A1A1A] text-[#0F172A] dark:text-white"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Min Spent</label>
-                          <input
-                            type="number"
-                            placeholder="Min"
-                            className="w-full px-3 py-2 rounded-lg text-sm border border-[#E5E7EB] dark:border-[#2A2A2A] focus:ring-2 focus:ring-[#2FB7A1] bg-white dark:bg-[#1A1A1A] text-[#0F172A] dark:text-white"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Max Spent</label>
-                          <input
-                            type="number"
-                            placeholder="Max"
-                            className="w-full px-3 py-2 rounded-lg text-sm border border-[#E5E7EB] dark:border-[#2A2A2A] focus:ring-2 focus:ring-[#2FB7A1] bg-white dark:bg-[#1A1A1A] text-[#0F172A] dark:text-white"
-                          />
-                        </div>
-                      </div>
-                      <div className="mt-4 flex items-center gap-3">
-                        <div className="relative flex-1">
-                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#64748B]" size={16} />
-                          <input
-                            type="text"
-                            placeholder="Search by customer name or username..."
-                            value={reportCustomerSearch}
-                            onChange={(e) => setReportCustomerSearch(e.target.value)}
-                            className={`w-full pl-9 pr-4 py-2 rounded-lg text-sm border focus:ring-2 focus:ring-[#2FB7A1] focus:border-transparent ${
-                              darkMode
-                                ? 'bg-[#111827] border-[#374151] text-white placeholder-gray-500'
-                                : 'bg-white border-[#E5E7EB] text-[#0F172A] placeholder-[#9CA3AF]'
-                            }`}
-                          />
-                        </div>
-                        <button
-                          onClick={() => {
-                            setReportCustomerFromDate('');
-                            setReportCustomerToDate('');
-                            setReportCustomerSearch('');
-                          }}
-                          className={`px-4 py-2 border rounded-lg text-sm transition ${
-                            darkMode
-                              ? 'border-[#2A2A2A] text-gray-400 hover:bg-[#2A2A2A]'
-                              : 'border-[#E3E8EF] text-[#64748B] hover:bg-gray-50'
-                          }`}
-                        >
-                          Clear Filters
-                        </button>
-                      </div>
-                    
-                    </div>
-
-                    {/* Customer Drill-Down View */}
-                    {selectedCustomerForDrillDown && (
-                      <div className="bg-white dark:bg-[#1A1A1A] rounded-xl shadow-sm border border-[#E3E8EF] dark:border-[#2A2A2A] p-6 mb-6">
-                        <div className="flex items-center justify-between mb-6">
-                          <div>
-                            <h3 className="text-xl font-semibold text-[#0F172A] dark:text-white">
-                              {customerPurchases?.customer?.name || selectedCustomerForDrillDown}
-                            </h3>
-                            {customerPurchases?.customer && (
-                              <div className="mt-2 text-sm text-[#64748B] dark:text-gray-400">
-                                {customerPurchases.customer.email && <span>{customerPurchases.customer.email}</span>}
-                                {customerPurchases.customer.phone && <span className="ml-4">{customerPurchases.customer.phone}</span>}
-                              </div>
-                            )}
+                    <div>
+                      {/* Summary Cards */}
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                        {[
+                          { label: 'Total Customers', value: customerReportData.length },
+                          { label: 'Total Revenue', value: formatCurrencyNaira(customerReportData.reduce((s,c)=>s+c.totalSpent,0)) },
+                          { label: 'Total Packs Purchased', value: customerReportData.reduce((s,c)=>s+c.totalQuantity,0) },
+                          { label: 'Avg Order Value', value: (() => { const tot = customerReportData.reduce((s,c)=>s+c.totalOrders,0); return tot ? formatCurrencyNaira(customerReportData.reduce((s,c)=>s+c.totalSpent,0)/tot) : '₦0.00'; })() },
+                        ].map((card,i) => (
+                          <div key={i} className={`rounded-xl shadow-sm border p-6 ${darkMode ? 'bg-[#1A1A1A] border-[#2A2A2A]' : 'bg-white border-[#E3E8EF]'}`}>
+                            <p className={`text-sm mb-2 ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>{card.label}</p>
+                            <p className={`text-2xl font-semibold ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>{card.value}</p>
                           </div>
-                          <button
-                            onClick={() => {
-                              setSelectedCustomerForDrillDown(null);
-                              setCustomerPurchases(null);
-                            }}
-                            className="px-4 py-2 text-sm border border-[#E3E8EF] dark:border-[#2A2A2A] rounded-lg hover:bg-gray-50 dark:hover:bg-[#2A2A2A] transition text-[#0F172A] dark:text-white"
-                          >
-                            Close
+                        ))}
+                      </div>
+
+                      {/* Filter Bar */}
+                      <div className={`rounded-xl shadow-sm border p-4 mb-6 ${darkMode ? 'bg-[#1A1A1A] border-[#2A2A2A]' : 'bg-white border-[#E3E8EF]'}`}>
+                        <div className="grid grid-cols-2 gap-3 mb-3">
+                          <div>
+                            <label className={`block text-xs font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Date From</label>
+                            <input type="date" value={reportCustomerFromDate} onChange={e=>setReportCustomerFromDate(e.target.value)}
+                              className={`w-full px-3 py-2 rounded-lg text-sm border focus:ring-2 focus:ring-[#2FB7A1] ${darkMode ? 'bg-[#111827] border-[#1f2937] text-white' : 'bg-white border-[#E5E7EB] text-[#0F172A]'}`} />
+                          </div>
+                          <div>
+                            <label className={`block text-xs font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Date To</label>
+                            <input type="date" value={reportCustomerToDate} onChange={e=>setReportCustomerToDate(e.target.value)}
+                              className={`w-full px-3 py-2 rounded-lg text-sm border focus:ring-2 focus:ring-[#2FB7A1] ${darkMode ? 'bg-[#111827] border-[#1f2937] text-white' : 'bg-white border-[#E5E7EB] text-[#0F172A]'}`} />
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <div className="relative flex-1">
+                            <Search size={14} className={`absolute left-3 top-1/2 -translate-y-1/2 ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`} />
+                            <input type="text" placeholder="Search by customer name or @username…" value={reportCustomerSearch}
+                              onChange={e=>setReportCustomerSearch(e.target.value)}
+                              className={`w-full pl-9 pr-3 py-2 rounded-lg text-sm border focus:ring-2 focus:ring-[#2FB7A1] ${darkMode ? 'bg-[#111827] border-[#374151] text-white placeholder-gray-500' : 'bg-white border-[#E5E7EB] text-[#0F172A]'}`} />
+                          </div>
+                          <button onClick={()=>{ setReportCustomerFromDate(''); setReportCustomerToDate(''); setReportCustomerSearch(''); }}
+                            className={`px-4 py-2 border rounded-lg text-sm transition ${darkMode ? 'border-[#2A2A2A] text-gray-400 hover:bg-[#2A2A2A]' : 'border-[#E3E8EF] text-[#64748B] hover:bg-gray-50'}`}>
+                            Clear
                           </button>
                         </div>
+                      </div>
 
-                        {loadingCustomerData ? (
-                          <div className="text-center py-8 text-[#64748B] dark:text-gray-400">Loading customer data...</div>
-                        ) : customerPurchases ? (
-                          <>
-
-                            {/* Customer Summary */}
-                            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
-                              <div className="bg-[#F9FAFB] dark:bg-[#2A2A2A] rounded-lg p-4 border border-[#E3E8EF] dark:border-[#2A2A2A]">
-                                <p className="text-xs text-[#64748B] dark:text-gray-400 mb-1">Total Revenue</p>
-                                <p className="text-xl font-semibold text-[#0F172A] dark:text-white">
-                                  {formatCurrencyNaira(customerPurchases.summary?.totalRevenue)}
-                                </p>
+                      {/* Drill-down */}
+                      {selectedCustomerForDrillDown && (
+                          <div className={`rounded-xl border mb-6 overflow-hidden shadow-sm ${darkMode ? 'bg-[#111827] border-[#1f2937]' : 'bg-white border-[#E3E8EF]'}`}>
+                            
+                            {/* Header */}
+                            <div className={`flex items-center justify-between px-6 py-4 border-b ${darkMode ? 'border-[#1f2937]' : 'border-[#E3E8EF]'}`}>
+                              <div>
+                                <h3 className={`text-lg font-semibold ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>
+                                  {customerPurchases?.customer?.name || selectedCustomerForDrillDown}
+                                </h3>
+                                <p className={`text-xs mt-0.5 ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>Customer Profile</p>
                               </div>
-                              <div className="bg-[#F9FAFB] dark:bg-[#2A2A2A] rounded-lg p-4 border border-[#E3E8EF] dark:border-[#2A2A2A]">
-                                <p className="text-xs text-[#64748B] dark:text-gray-400 mb-1">Total Cost (FIFO)</p>
-                                <p className="text-xl font-semibold text-[#0F172A] dark:text-white">
-                                  {formatCurrencyNaira(
-                                    customerPurchases.summary?.totalCost ??
-                                    customerPurchases.summary?.totalCostFifo ??
-                                    0
-                                  )}
-                                </p>
-                              </div>
-                              <div className="bg-[#F9FAFB] dark:bg-[#2A2A2A] rounded-lg p-4 border border-[#E3E8EF] dark:border-[#2A2A2A]">
-                                <p className="text-xs text-[#64748B] dark:text-gray-400 mb-1">Total Profit</p>
-                                <p className={`text-xl font-semibold ${(customerPurchases.summary?.totalProfit || 0) >= 0 ? 'text-[#16A34A]' : 'text-[#DC2626]'}`}>
-                                  {formatCurrencyNaira(customerPurchases.summary?.totalProfit)}
-                                </p>
-                              </div>
-                              <div className="bg-[#F9FAFB] dark:bg-[#2A2A2A] rounded-lg p-4 border border-[#E3E8EF] dark:border-[#2A2A2A]">
-                                <p className="text-xs text-[#64748B] dark:text-gray-400 mb-1">First Purchase</p>
-                                <p className="text-sm font-medium text-[#0F172A] dark:text-white">
-                                  {customerPurchases.customer?.firstOrderDate || '—'}
-                                </p>
-                              </div>
-                              <div className="bg-[#F9FAFB] dark:bg-[#2A2A2A] rounded-lg p-4 border border-[#E3E8EF] dark:border-[#2A2A2A]">
-                                <p className="text-xs text-[#64748B] dark:text-gray-400 mb-1">Last Purchase</p>
-                                <p className="text-sm font-medium text-[#0F172A] dark:text-white">
-                                  {customerPurchases.customer?.lastOrderDate || '—'}
-                                </p>
-                              </div>
+                              <button
+                                onClick={() => { setSelectedCustomerForDrillDown(null); setCustomerPurchases(null); }}
+                                className={`px-4 py-2 text-sm border rounded-lg transition ${darkMode ? 'border-[#1f2937] text-gray-300 hover:bg-[#1f2937]' : 'border-[#E3E8EF] text-[#64748B] hover:bg-gray-50'}`}>
+                                Close
+                              </button>
                             </div>
 
-                            {/* Purchase Breakdown Table */}
-                            <div className="overflow-x-auto">
-                              <table className="w-full text-sm">
-                                <thead>
-                                  <tr className="border-b border-[#E5E7EB] dark:border-[#2A2A2A] bg-[#F9FAFB] dark:bg-[#2A2A2A]">
-                                    <th className="text-left px-4 py-3 text-xs font-semibold text-[#64748B] dark:text-gray-400 uppercase">Date</th>
-                                    <th className="text-left px-4 py-3 text-xs font-semibold text-[#64748B] dark:text-gray-400 uppercase">Product</th>
-                                    <th className="text-left px-4 py-3 text-xs font-semibold text-[#64748B] dark:text-gray-400 uppercase">Batch ID</th>
-                                    <th className="text-right px-4 py-3 text-xs font-semibold text-[#64748B] dark:text-gray-400 uppercase">Quantity</th>
-                                    <th className="text-right px-4 py-3 text-xs font-semibold text-[#64748B] dark:text-gray-400 uppercase">Cost Price (FIFO)</th>
-                                    <th className="text-right px-4 py-3 text-xs font-semibold text-[#64748B] dark:text-gray-400 uppercase">Selling Price</th>
-                                    <th className="text-right px-4 py-3 text-xs font-semibold text-[#64748B] dark:text-gray-400 uppercase">Revenue</th>
-                                    <th className="text-right px-4 py-3 text-xs font-semibold text-[#64748B] dark:text-gray-400 uppercase">Profit</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {customerPurchases.purchases && customerPurchases.purchases.length > 0 ? (
-                                    customerPurchases.purchases.map((purchase, idx) => (
-                                      <tr key={purchase.id || idx} className="border-b border-[#F1F5F9] dark:border-[#2A2A2A] hover:bg-[#F9FAFB] dark:hover:bg-[#2A2A2A]">
-                                        <td className="px-4 py-3 text-[#0F172A] dark:text-white">{purchase.dateSold || purchase.date || '—'}</td>
-                                        <td className="px-4 py-3 text-[#0F172A] dark:text-white font-medium">{purchase.productName || purchase.product?.name || '—'}</td>
-                                        <td className="px-4 py-3 text-[#64748B] dark:text-gray-400 font-mono text-xs">{purchase.batchId || purchase.batch?.id || '—'}</td>
-                                        <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">{purchase.quantitySold || purchase.quantity || 0}</td>
-                                      <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">
-                                        {formatCurrencyNaira(purchase.costPriceUsed || purchase.costPriceFifo || purchase.costPrice || 0)}
-                                      </td>
-                                      <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">
-                                        {formatCurrencyNaira(purchase.sellingPriceUsed || purchase.sellingPrice || 0)}
-                                      </td>
-                                      <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">
-                                        {formatCurrencyNaira(purchase.revenue || 0)}
-                                      </td>
-                                      <td className={`px-4 py-3 text-right font-semibold ${(purchase.profit || 0) >= 0 ? 'text-[#16A34A]' : 'text-[#DC2626]'}`}>
-                                        {formatCurrencyNaira(purchase.profit || 0)}
-                                      </td>
+                            {loadingCustomerData ? (
+                              <div className="py-12 text-center text-sm text-[#64748B]">Loading customer data...</div>
+                            ) : customerPurchases ? (
+                              <>
+                                {/* Profile Strip */}
+                                <div className={`grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-0 border-b ${darkMode ? 'border-[#1f2937]' : 'border-[#E3E8EF]'}`}>
+                                  {[
+                                    { label: 'Name',          value: customerPurchases.customer?.name || selectedCustomerForDrillDown },
+                                    { label: 'Phone',         value: customerPurchases.customer?.phone || customers.find(c=>c.name===selectedCustomerForDrillDown)?.phone || '—' },
+                                    { label: 'Email',         value: customerPurchases.customer?.email || customers.find(c=>c.name===selectedCustomerForDrillDown)?.email || '—' },
+                                    { label: 'First Purchase',value: customerPurchases.customer?.firstOrderDate || '—' },
+                                    { label: 'Total Orders',  value: customerPurchases.summary?.totalOrders ?? customerPurchases.purchases?.length ?? 0 },
+                                    { label: 'Total Value',   value: formatCurrencyNaira(customerPurchases.summary?.totalRevenue) },
+                                  ].map((item, i) => (
+                                    <div key={i} className={`px-5 py-4 ${i < 5 ? `border-b md:border-b-0 md:border-r ${darkMode ? 'border-[#1f2937]' : 'border-[#E3E8EF]'}` : ''}`}>
+                                      <p className={`text-[10px] font-semibold uppercase tracking-wide mb-1 ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>{item.label}</p>
+                                      <p className={`text-sm font-semibold truncate ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>{item.value}</p>
+                                    </div>
+                                  ))}
+                                </div>
+
+                                {/* Order History Table */}
+                                <div className="overflow-x-auto">
+                                  <table className="w-full text-sm">
+                                    <thead>
+                                      <tr className={`${darkMode ? 'bg-[#0d1117]' : 'bg-[#F9FAFB]'}`}>
+                                        {['Order No', 'Date', 'Product', 'Qty', 'Unit Price', 'Total Paid', 'Cost (FIFO)', 'Profit', 'Status'].map((h, i) => (
+                                          <th key={i} className={`px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wide border-b ${darkMode ? 'text-gray-500 border-[#1f2937]' : 'text-[#94A3B8] border-[#E3E8EF]'} ${i >= 3 ? 'text-right' : ''}`}>
+                                            {h}
+                                          </th>
+                                        ))}
                                       </tr>
-                                    ))
-                                  ) : (
-                                    <tr>
-                                      <td colSpan="8" className="px-4 py-8 text-center text-[#64748B] dark:text-gray-400">
-                                        No purchases found for this customer
-                                      </td>
-                                    </tr>
-                                  )}
-                                </tbody>
-                                {customerPurchases.purchases && customerPurchases.purchases.length > 0 && (
-                                  <tfoot>
-                                    <tr className="bg-[#F9FAFB] dark:bg-[#2A2A2A] font-bold border-t-2 border-[#E5E7EB] dark:border-[#2A2A2A]">
-                                      <td colSpan="6" className="px-4 py-3 text-[#0F172A] dark:text-white">Grand Total</td>
-                                      <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">
-                                        {formatCurrencyNaira(customerPurchases.summary?.totalRevenue)}
-                                      </td>
-                                      <td className={`px-4 py-3 text-right ${(customerPurchases.summary?.totalProfit || 0) >= 0 ? 'text-[#16A34A]' : 'text-[#DC2626]'}`}>
-                                        {formatCurrencyNaira(customerPurchases.summary?.totalProfit)}
-                                      </td>
-                                    </tr>
-                                  </tfoot>
-                                )}
-                              </table>
-                            </div>
-                          </>
-                        ) : (
-                          <div className="text-center py-8">
-                            <p className="text-[#64748B] dark:text-gray-400 mb-4">Customer not found</p>
-                            <button
-                              onClick={() => {
-                                setSelectedCustomerForDrillDown(null);
-                                setCustomerPurchases(null);
-                              }}
-                              className="px-4 py-2 bg-[#2FB7A1] text-white rounded-lg hover:bg-[#28a085] transition"
-                            >
-                              Go Back
-                            </button>
+                                    </thead>
+                                    <tbody>
+                                      {customerPurchases.purchases && customerPurchases.purchases.length > 0 ? (
+                                        customerPurchases.purchases.map((p, idx) => {
+                                          const product = inventory.find(prod => prod.id === (p.productId || p.product?.id));
+                                          const unitPrice = p.sellingPriceUsed || p.sellingPrice || product?.price || 0;
+                                          const qty = p.quantitySold || p.quantity || 0;
+                                          const revenue = p.revenue || (unitPrice * qty);
+                                          const cost = p.costPriceUsed || p.costPriceFifo || p.costPrice || 0;
+                                          const profit = p.profit ?? (revenue - cost * qty);
+                                          const isProfit = profit >= 0;
+
+                                          // shipping status from order
+                                          const orderMatch = orders.find(o => o.id === (p.orderId || p.order_id));
+                                          const shipStatus = orderMatch?.shipping?.status || 'pending';
+                                          const statusCfg = {
+                                            shipped: { label: 'Delivered', cls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' },
+                                            transit: { label: 'In Transit', cls: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' },
+                                            pending: { label: 'Pending',    cls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' },
+                                          };
+                                          const st = statusCfg[shipStatus] || statusCfg.pending;
+
+                                          return (
+                                            <tr key={p.id || idx}
+                                              onClick={() => { const o = orders.find(o=>o.id===(p.orderId||p.order_id)); if(o) setSelectedOrder(o); }}
+                                              className={`border-b cursor-pointer transition ${darkMode ? 'border-[#1f2937] hover:bg-[#111827]' : 'border-[#F1F5F9] hover:bg-[#F9FAFB]'}`}>
+                                              
+                                              {/* Order No */}
+                                              <td className={`px-4 py-3 font-mono text-xs font-semibold ${darkMode ? 'text-[#2FB7A1]' : 'text-[#2FB7A1]'}`}>
+                                                {p.orderId || p.order_id || '—'}
+                                              </td>
+                                              {/* Date */}
+                                              <td className={`px-4 py-3 whitespace-nowrap ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>
+                                                {p.dateSold || p.date || '—'}
+                                              </td>
+                                              {/* Product */}
+                                              <td className={`px-4 py-3 font-medium ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>
+                                                {p.productName || product?.name || p.productId || '—'}
+                                              </td>
+                                              {/* Qty */}
+                                              <td className={`px-4 py-3 text-right tabular-nums ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>
+                                                {qty}
+                                              </td>
+                                              {/* Unit Price */}
+                                              <td className={`px-4 py-3 text-right tabular-nums ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>
+                                                {formatCurrencyNaira(unitPrice)}
+                                              </td>
+                                              {/* Total Paid */}
+                                              <td className={`px-4 py-3 text-right tabular-nums font-semibold ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>
+                                                {formatCurrencyNaira(revenue)}
+                                              </td>
+                                              {/* Cost FIFO */}
+                                              <td className={`px-4 py-3 text-right tabular-nums ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>
+                                                {formatCurrencyNaira(cost * qty)}
+                                              </td>
+                                              {/* Profit */}
+                                              <td className={`px-4 py-3 text-right tabular-nums font-semibold ${isProfit ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'}`}>
+                                                {formatCurrencyNaira(profit)}
+                                              </td>
+                                              {/* Status */}
+                                              <td className="px-4 py-3">
+                                                <span className={`text-[10px] font-bold px-2 py-1 rounded-full whitespace-nowrap ${st.cls}`}>
+                                                  {st.label}
+                                                </span>
+                                              </td>
+                                            </tr>
+                                          );
+                                        })
+                                      ) : (
+                                        <tr>
+                                          <td colSpan="9" className={`py-10 text-center text-sm ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>
+                                            No purchases found for this customer
+                                          </td>
+                                        </tr>
+                                      )}
+                                    </tbody>
+
+                                    {/* Totals Footer */}
+                                    {customerPurchases.purchases?.length > 0 && (
+                                      <tfoot>
+                                        <tr className={`border-t-2 font-semibold text-xs ${darkMode ? 'bg-[#0d1117] border-[#1f2937]' : 'bg-[#F9FAFB] border-[#E3E8EF]'}`}>
+                                          <td colSpan="3" className={`px-4 py-3 ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>
+                                            Grand Total ({customerPurchases.purchases.length} orders)
+                                          </td>
+                                          <td className={`px-4 py-3 text-right tabular-nums ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>
+                                            {customerPurchases.purchases.reduce((s,p)=>s+(p.quantitySold||p.quantity||0),0)}
+                                          </td>
+                                          <td />
+                                          <td className={`px-4 py-3 text-right tabular-nums ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>
+                                            {formatCurrencyNaira(customerPurchases.summary?.totalRevenue)}
+                                          </td>
+                                          <td className={`px-4 py-3 text-right tabular-nums ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>
+                                            {formatCurrencyNaira(customerPurchases.summary?.totalCost ?? customerPurchases.summary?.totalCostFifo)}
+                                          </td>
+                                          <td className={`px-4 py-3 text-right tabular-nums ${(customerPurchases.summary?.totalProfit||0)>=0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}`}>
+                                            {formatCurrencyNaira(customerPurchases.summary?.totalProfit)}
+                                          </td>
+                                          <td />
+                                        </tr>
+                                      </tfoot>
+                                    )}
+                                  </table>
+                                </div>
+                              </>
+                            ) : (
+                              <div className="py-10 text-center text-sm text-[#64748B]">Customer not found.</div>
+                            )}
                           </div>
                         )}
-                      </div>
-                    )}
 
-                    {/* Customer Table */}
-                    {!selectedCustomerForDrillDown && (
-                      <div className="bg-white dark:bg-[#1A1A1A] rounded-xl shadow-sm border border-[#E3E8EF] dark:border-[#2A2A2A] p-6">
-                        <div className="overflow-x-auto">
-                          <table className="w-full text-sm">
-                            <thead>
-                              <tr className="border-b border-[#E5E7EB] dark:border-[#2A2A2A] bg-[#F9FAFB] dark:bg-[#2A2A2A]">
-                                <th className="text-left px-4 py-3 text-xs font-semibold text-[#64748B] dark:text-gray-400 uppercase">Customer</th>
-                                <th className="text-center px-4 py-3 text-xs font-semibold text-[#64748B] dark:text-gray-400 uppercase">Transactions</th>
-                                <th className="text-right px-4 py-3 text-xs font-semibold text-[#64748B] dark:text-gray-400 uppercase">Qty Bought</th>
-                                <th className="text-right px-4 py-3 text-xs font-semibold text-[#64748B] dark:text-gray-400 uppercase">Total Spent</th>
-                                <th className="text-right px-4 py-3 text-xs font-semibold text-[#64748B] dark:text-gray-400 uppercase">Avg Order</th>
-                                <th className="text-right px-4 py-3 text-xs font-semibold text-[#64748B] dark:text-gray-400 uppercase">Last Purchase</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {customerReportData.length === 0 ? (
-                                <tr>
-                                  <td colSpan="6" className="px-4 py-8 text-center text-[#64748B] dark:text-gray-400">
-                                    No customer data available
-                                  </td>
+                      {/* Table */}
+                      {!selectedCustomerForDrillDown && (
+                        <div className={`rounded-xl shadow-sm border overflow-hidden ${darkMode ? 'bg-[#1A1A1A] border-[#2A2A2A]' : 'bg-white border-[#E3E8EF]'}`}>
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                              <thead>
+                                <tr className={`${darkMode ? 'bg-[#0d1117]' : 'bg-[#F9FAFB]'}`}>
+                                  {[
+                                    { label: 'Customer',       align: 'left',  field: null },
+                                    { label: 'Phone',          align: 'left',  field: null },
+                                    { label: 'Email',          align: 'left',  field: null },
+                                    { label: 'Orders',         align: 'right', field: 'orders' },
+                                    { label: 'Packs',          align: 'right', field: 'packs' },
+                                    { label: 'Total Spent',    align: 'right', field: null },
+                                    { label: 'Last Purchase',  align: 'right', field: null },
+                                  ].map((col, i) => (
+                                    <th key={i}
+                                      onClick={col.field ? () => setCrSort(col.field) : undefined}
+                                      className={`px-4 py-3 text-xs font-semibold uppercase tracking-wide border-b text-${col.align} ${col.field ? 'cursor-pointer select-none' : ''} ${darkMode ? 'text-gray-500 border-[#1f2937]' : 'text-[#94A3B8] border-[#E3E8EF]'}`}>
+                                      {col.label}
+                                      {col.field && <span className={`ml-1 text-[10px] ${crSortField===col.field ? 'text-[#2FB7A1]' : 'opacity-40'}`}>{crSortField===col.field && crSortDir===-1 ? '▼' : '▲'}</span>}
+                                    </th>
+                                  ))}
                                 </tr>
-                              ) : (
-                                customerReportData.map((row) => (
-                                  <tr 
-                                    key={row.name} 
-                                    className="border-b border-[#F1F5F9] dark:border-[#2A2A2A] hover:bg-[#F9FAFB] dark:hover:bg-[#2A2A2A] cursor-pointer"
-                                    onClick={() => fetchCustomerPurchases(row.name)}
-                                  >
-                                    <td className="px-4 py-3 text-[#0F172A] dark:text-white font-medium font-bold">{row.name}</td>
-                                    <td className="px-4 py-3 text-center text-[#0F172A] dark:text-white">{row.totalOrders}</td>
-                                    <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">{row.totalQuantity}</td>
-                                    <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white font-semibold">${row.totalSpent.toFixed(2)}</td>
-                                    <td className="px-4 py-3 text-right text-[#0F172A] dark:text-white">
-                                      ${row.totalOrders > 0 ? (row.totalSpent / row.totalOrders).toFixed(2) : '0.00'}
-                                    </td>
-                                    <td className="px-4 py-3 text-right text-[#64748B] dark:text-gray-400">
-                                      {row.lastOrderDate || '—'}
-                                    </td>
-                                  </tr>
-                                ))
-                              )}
-                            </tbody>
-                          </table>
+                              </thead>
+                              <tbody>
+                                {(() => {
+                                  const sorted = [...customerReportData].sort((a,b) => {
+                                    const av = crSortField==='orders' ? a.totalOrders : a.totalQuantity;
+                                    const bv = crSortField==='orders' ? b.totalOrders : b.totalQuantity;
+                                    return crSortDir * (bv - av);
+                                  });
+                                  if (!sorted.length) return (
+                                    <tr><td colSpan="7" className={`py-14 text-center text-sm ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>No customers match your filters</td></tr>
+                                  );
+                                  return sorted.map((row, idx) => {
+                                    const customer = customers.find(c=>c.name===row.name);
+                                    return (
+                                      <tr key={row.name} onClick={()=>fetchCustomerPurchases(row.name)}
+                                        className={`border-b cursor-pointer transition ${darkMode ? 'border-[#1f2937] hover:bg-[#111827]' : 'border-[#F1F5F9] hover:bg-[#F9FAFB]'}`}>
+                                        <td className="px-4 py-3">
+                                          <div className="flex items-center gap-2">
+                                            <div>
+                                              <p className={`font-medium leading-tight ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>{row.name}</p>
+                                              {row.username && <p className={`text-xs mt-0.5 ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>@{row.username}</p>}
+                                            </div>
+                                            {idx===0 && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 whitespace-nowrap">★ Top</span>}
+                                          </div>
+                                        </td>
+                                        <td className={`px-4 py-3 text-sm ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>{customer?.phone || '—'}</td>
+                                        <td className={`px-4 py-3 text-sm ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>{customer?.email || '—'}</td>
+                                        <td className={`px-4 py-3 text-right tabular-nums ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>{row.totalOrders}</td>
+                                        <td className={`px-4 py-3 text-right tabular-nums font-semibold ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>{row.totalQuantity}</td>
+                                        <td className={`px-4 py-3 text-right tabular-nums font-semibold ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>{formatCurrencyNaira(row.totalSpent)}</td>
+                                        <td className={`px-4 py-3 text-right text-sm ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>{row.lastOrderDate || '—'}</td>
+                                      </tr>
+                                    );
+                                  });
+                                })()}
+                              </tbody>
+                              <tfoot>
+                                <tr className={`border-t-2 font-semibold text-xs ${darkMode ? 'bg-[#0d1117] border-[#1f2937]' : 'bg-[#F9FAFB] border-[#E3E8EF]'}`}>
+                                  <td className={`px-4 py-3 ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>Total ({customerReportData.length})</td>
+                                  <td /><td />
+                                  <td className={`px-4 py-3 text-right tabular-nums ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>{customerReportData.reduce((s,c)=>s+c.totalOrders,0)}</td>
+                                  <td className={`px-4 py-3 text-right tabular-nums ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>{customerReportData.reduce((s,c)=>s+c.totalQuantity,0)}</td>
+                                  <td className={`px-4 py-3 text-right tabular-nums ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>{formatCurrencyNaira(customerReportData.reduce((s,c)=>s+c.totalSpent,0))}</td>
+                                  <td />
+                                </tr>
+                              </tfoot>
+                            </table>
+                          </div>
                         </div>
-                      </div>
-                    )}
-                  </div>
-                )}
+                      )}
+                    </div>
+                  )}
 
                 {/* Inventory Report */}
                 {activeReportTab === 'inventory' && (
