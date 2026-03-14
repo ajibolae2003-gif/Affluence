@@ -5078,265 +5078,421 @@ const InventorySystem = ({ onLogout }) => {
   );
 })()}
 
-{activeReportTab === 'sales' && (
+({activeReportTab === 'sales' && (
   <div>
     {/* Summary Cards */}
     {salesReportData && (() => {
-      // Flatten all sales transactions from salesReportData
       const allSales = [];
       (salesReportData.products || []).forEach(product => {
         (product.batches || []).forEach(batchData => {
           (batchData.sales || []).forEach(sale => {
-            allSales.push({
-              ...sale,
-              productName: product.product?.name,
-              productId: product.product?.id,
-              batchId: batchData.batch?.id,
-              unitPrice: sale.sellingPriceUsed || sale.selling_price_used || batchData.batch?.sellingPrice || 0,
-            });
+            allSales.push({ ...sale });
           });
         });
       });
-
-      const totalUnits = allSales.reduce((s, x) => s + (x.quantitySold || x.quantity_sold || 0), 0);
+      const totalUnits = allSales.reduce((s, x) => s + (x.quantitySold || 0), 0);
       const totalValue = allSales.reduce((s, x) => s + (x.revenue || 0), 0);
       const totalTxns  = allSales.length;
-
-      return (
-        <>
-          {/* Summary Strip */}
-          <div className={`rounded-xl border mb-6 overflow-hidden ${darkMode ? 'bg-[#111827] border-[#1f2937]' : 'bg-white border-[#E3E8EF]'}`}>
-            <div className={`grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x ${darkMode ? 'divide-[#1f2937]' : 'divide-[#E3E8EF]'}`}>
-              {[
-                { label: 'Total Units Sold',    value: totalUnits.toLocaleString(),          accent: '#8B5CF6' },
-                { label: 'Total Sales Value',   value: formatCurrencyNaira(totalValue),      accent: '#2FB7A1' },
-                { label: 'Total Transactions',  value: totalTxns.toLocaleString(),           accent: '#3B82F6' },
-              ].map((card, i) => (
-                <div key={i} className="px-6 py-5 flex items-center gap-4">
-                  <div className="w-1 h-10 rounded-full flex-shrink-0" style={{ background: card.accent }} />
-                  <div>
-                    <p className={`text-xs font-semibold uppercase tracking-wide mb-1 ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>{card.label}</p>
-                    <p className="text-2xl font-bold" style={{ color: card.accent }}>{card.value}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Filters */}
-          <div className={`rounded-xl border p-4 mb-5 ${darkMode ? 'bg-[#111827] border-[#1f2937]' : 'bg-white border-[#E3E8EF]'}`}>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
-              <div>
-                <label className={`block text-xs font-medium mb-1 ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>From</label>
-                <input type="date" value={reportDateFrom} onChange={e => setReportDateFrom(e.target.value)}
-                  className={`w-full px-3 py-2 rounded-lg text-sm border focus:ring-2 focus:ring-[#2FB7A1] ${darkMode ? 'bg-[#0d1117] border-[#1f2937] text-white' : 'bg-white border-[#E3E8EF] text-[#0F172A]'}`} />
-              </div>
-              <div>
-                <label className={`block text-xs font-medium mb-1 ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>To</label>
-                <input type="date" value={reportDateTo} onChange={e => setReportDateTo(e.target.value)}
-                  className={`w-full px-3 py-2 rounded-lg text-sm border focus:ring-2 focus:ring-[#2FB7A1] ${darkMode ? 'bg-[#0d1117] border-[#1f2937] text-white' : 'bg-white border-[#E3E8EF] text-[#0F172A]'}`} />
-              </div>
-              <div>
-                <label className={`block text-xs font-medium mb-1 ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>Product</label>
-                <select value={reportProductFilter} onChange={e => setReportProductFilter(e.target.value)}
-                  className={`w-full px-3 py-2 rounded-lg text-sm border focus:ring-2 focus:ring-[#2FB7A1] ${darkMode ? 'bg-[#0d1117] border-[#1f2937] text-white' : 'bg-white border-[#E3E8EF] text-[#0F172A]'}`}>
-                  <option value="">All Products</option>
-                  {inventory.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className={`block text-xs font-medium mb-1 ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>Customer</label>
-                <input type="text" placeholder="Filter by customer…" value={salesCustomerFilter}
-                  onChange={e => setSalesCustomerFilter(e.target.value)}
-                  className={`w-full px-3 py-2 rounded-lg text-sm border focus:ring-2 focus:ring-[#2FB7A1] ${darkMode ? 'bg-[#0d1117] border-[#1f2937] text-white placeholder-gray-600' : 'bg-white border-[#E3E8EF] text-[#0F172A]'}`} />
-              </div>
-            </div>
-            <div className="flex items-center justify-between">
-              <button onClick={() => { setReportDateFrom(''); setReportDateTo(''); setReportProductFilter(''); setSalesCustomerFilter(''); }}
-                className={`text-xs px-3 py-1.5 rounded-lg border transition ${darkMode ? 'border-[#1f2937] text-gray-400 hover:bg-[#1f2937]' : 'border-[#E3E8EF] text-[#64748B] hover:bg-gray-50'}`}>
-                Clear Filters
-              </button>
-              <button onClick={exportSalesReportPDF} disabled={!salesReportData}
-                className="inline-flex items-center gap-2 px-4 py-1.5 bg-[#2FB7A1] text-white rounded-lg text-xs font-semibold hover:bg-[#28a085] disabled:opacity-50 transition shadow-sm">
-                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
-                  <line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/>
-                </svg>
-                Export PDF
-              </button>
-            </div>
-          </div>
-
-          {/* Transactions Table */}
-          {(() => {
-            const customerFilter = (salesCustomerFilter || '').toLowerCase().trim();
-            const filtered = allSales.filter(sale => {
-              if (customerFilter) {
-                const name = (sale.customerName || sale.customer_name || '').toLowerCase();
-                if (!name.includes(customerFilter)) return false;
-              }
-              return true;
-            });
-
-            // Filtered summary
-            const fUnits = filtered.reduce((s, x) => s + (x.quantitySold || x.quantity_sold || 0), 0);
-            const fValue = filtered.reduce((s, x) => s + (x.revenue || 0), 0);
-
-            return (
-              <div className={`rounded-xl border overflow-hidden ${darkMode ? 'bg-[#111827] border-[#1f2937]' : 'bg-white border-[#E3E8EF]'}`}>
-
-                {/* Desktop Table */}
-                <div className="hidden md:block overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className={`${darkMode ? 'bg-[#0d1117]' : 'bg-[#F9FAFB]'}`}>
-                        {['Sales No', 'Date', 'Customer', 'Product', 'Qty', 'Unit Price', 'Total Sale', 'Payment'].map((h, i) => (
-                          <th key={i} className={`px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wide border-b ${darkMode ? 'text-gray-500 border-[#1f2937]' : 'text-[#94A3B8] border-[#E3E8EF]'} ${i >= 4 ? 'text-right' : ''}`}>
-                            {h}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filtered.length === 0 ? (
-                        <tr>
-                          <td colSpan="8" className={`py-14 text-center text-sm ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>
-                            No sales transactions found
-                          </td>
-                        </tr>
-                      ) : (
-                        filtered.map((sale, idx) => {
-                          const qty       = sale.quantitySold || sale.quantity_sold || 0;
-                          const unitPrice = sale.unitPrice || 0;
-                          const total     = sale.revenue || 0;
-                          const orderId   = sale.orderId || sale.order_id || '—';
-                          const customer  = sale.customerName || sale.customer_name || '—';
-                          const date      = sale.dateSold || sale.date_sold
-                            ? new Date(sale.dateSold || sale.date_sold).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' })
-                            : '—';
-                          const orderMatch = orders.find(o => o.id === (sale.orderId || sale.order_id));
-                          const payMethod  = orderMatch?.paymentMethod || '—';
-
-                          return (
-                            <tr key={idx}
-                              onClick={() => { if (orderMatch) setSelectedOrder(orderMatch); }}
-                              className={`border-b transition ${orderMatch ? 'cursor-pointer' : ''} ${darkMode ? 'border-[#0d1117] hover:bg-[#0d1117]' : 'border-[#F8FAFC] hover:bg-[#F8FAFC]'}`}>
-                              <td className={`px-4 py-3 font-mono text-xs font-semibold ${darkMode ? 'text-[#2FB7A1]' : 'text-[#2FB7A1]'}`}>
-                                {orderId}
-                              </td>
-                              <td className={`px-4 py-3 whitespace-nowrap ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>
-                                {date}
-                              </td>
-                              <td className={`px-4 py-3 font-medium ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>
-                                {customer}
-                              </td>
-                              <td className={`px-4 py-3 ${darkMode ? 'text-gray-300' : 'text-[#64748B]'}`}>
-                                {sale.productName || '—'}
-                              </td>
-                              <td className={`px-4 py-3 text-right tabular-nums ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>
-                                {qty}
-                              </td>
-                              <td className={`px-4 py-3 text-right tabular-nums ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>
-                                {formatCurrencyNaira(unitPrice)}
-                              </td>
-                              <td className={`px-4 py-3 text-right tabular-nums font-semibold ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>
-                                {formatCurrencyNaira(total)}
-                              </td>
-                              <td className="px-4 py-3 text-right">
-                                <span className={`text-[10px] font-semibold px-2 py-1 rounded-full capitalize ${
-                                  payMethod === 'zelle'  ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300' :
-                                  payMethod === 'bank'   ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' :
-                                  payMethod === 'cashapp'? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' :
-                                  darkMode ? 'bg-[#1f2937] text-gray-400' : 'bg-[#F1F5F9] text-[#64748B]'
-                                }`}>
-                                  {payMethod === 'bank' ? 'Transfer' : payMethod}
-                                </span>
-                              </td>
-                            </tr>
-                          );
-                        })
-                      )}
-                    </tbody>
-                    {filtered.length > 0 && (
-                      <tfoot>
-                        <tr className={`border-t-2 text-xs font-semibold ${darkMode ? 'bg-[#0d1117] border-[#1f2937]' : 'bg-[#F9FAFB] border-[#E3E8EF]'}`}>
-                          <td colSpan="4" className={`px-4 py-3 ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>
-                            Total ({filtered.length} transactions)
-                          </td>
-                          <td className={`px-4 py-3 text-right tabular-nums ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>{fUnits}</td>
-                          <td />
-                          <td className="px-4 py-3 text-right tabular-nums text-[#2FB7A1]">{formatCurrencyNaira(fValue)}</td>
-                          <td />
-                        </tr>
-                      </tfoot>
-                    )}
-                  </table>
-                </div>
-
-                {/* Mobile Cards */}
-                <div className="md:hidden divide-y divide-[#F1F5F9] dark:divide-[#1f2937]">
-                  {filtered.length === 0 ? (
-                    <p className={`py-10 text-center text-sm ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>No transactions found</p>
-                  ) : filtered.map((sale, idx) => {
-                    const qty      = sale.quantitySold || sale.quantity_sold || 0;
-                    const total    = sale.revenue || 0;
-                    const orderId  = sale.orderId || sale.order_id || '—';
-                    const customer = sale.customerName || sale.customer_name || '—';
-                    const date     = sale.dateSold || sale.date_sold
-                      ? new Date(sale.dateSold || sale.date_sold).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' })
-                      : '—';
-                    const orderMatch = orders.find(o => o.id === (sale.orderId || sale.order_id));
-                    const payMethod  = orderMatch?.paymentMethod || '—';
-
-                    return (
-                      <div key={idx} onClick={() => { if (orderMatch) setSelectedOrder(orderMatch); }}
-                        className={`p-4 ${orderMatch ? 'cursor-pointer' : ''} ${darkMode ? 'hover:bg-[#0d1117]' : 'hover:bg-[#F8FAFC]'}`}>
-                        <div className="flex items-start justify-between mb-2">
-                          <div>
-                            <p className={`font-mono text-xs font-semibold text-[#2FB7A1]`}>{orderId}</p>
-                            <p className={`font-semibold text-sm mt-0.5 ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>{customer}</p>
-                            <p className={`text-xs mt-0.5 ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>{sale.productName} · {date}</p>
-                          </div>
-                          <div className="text-right flex-shrink-0">
-                            <p className={`font-bold ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>{formatCurrencyNaira(total)}</p>
-                            <p className={`text-xs mt-0.5 ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>Qty: {qty}</p>
-                          </div>
-                        </div>
-                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full capitalize ${
-                          payMethod === 'zelle'   ? 'bg-purple-100 text-purple-700' :
-                          payMethod === 'bank'    ? 'bg-blue-100 text-blue-700' :
-                          payMethod === 'cashapp' ? 'bg-green-100 text-green-700' :
-                          'bg-[#F1F5F9] text-[#64748B]'
-                        }`}>
-                          {payMethod === 'bank' ? 'Transfer' : payMethod}
-                        </span>
-                      </div>
-                    );
-                  })}
-                  {filtered.length > 0 && (
-                    <div className={`px-4 py-3 flex justify-between text-xs font-semibold ${darkMode ? 'bg-[#0d1117] text-gray-300' : 'bg-[#F9FAFB] text-[#0F172A]'}`}>
-                      <span>{filtered.length} transactions · {fUnits} units</span>
-                      <span className="text-[#2FB7A1]">{formatCurrencyNaira(fValue)}</span>
-                    </div>
-                  )}
-                </div>
-
-              </div>
-            );
-          })()}
-        </>
-      );
+      return null; // summary rendered below in cards
     })()}
 
-    {loadingSalesReport && (
-      <div className={`rounded-xl border p-12 text-center ${darkMode ? 'bg-[#111827] border-[#1f2937]' : 'bg-white border-[#E3E8EF]'}`}>
-        <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>Loading sales report…</p>
+    {salesReportData && (
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+        {[
+          { label: 'Total Revenue',     value: formatCurrencyNaira(salesReportData.summary?.totalRevenue) },
+          { label: 'Total COGS (FIFO)', value: formatCurrencyNaira(salesReportData.summary?.totalCost) },
+          { label: 'Gross Profit',      value: formatCurrencyNaira(salesReportData.summary?.totalProfit),
+            color: (salesReportData.summary?.totalProfit || 0) >= 0 ? 'text-emerald-500' : 'text-red-500' },
+          { label: 'Net Profit',        value: formatCurrencyNaira(salesReportData.summary?.totalProfit),
+            color: (salesReportData.summary?.totalProfit || 0) >= 0 ? 'text-emerald-500' : 'text-red-500' },
+          { label: 'Units Sold',        value: (salesReportData.summary?.unitsSold || 0).toLocaleString(), fullWidth: true },
+        ].map((card, i) => (
+          <div key={i} className={`rounded-xl border p-4 ${card.fullWidth ? 'col-span-2 md:col-span-1' : ''} ${darkMode ? 'bg-[#1A1A1A] border-[#2A2A2A]' : 'bg-white border-[#E3E8EF]'}`}>
+            <p className={`text-xs mb-1 leading-tight ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>{card.label}</p>
+            <p className={`text-lg md:text-2xl font-semibold leading-tight ${card.color || (darkMode ? 'text-white' : 'text-[#0F172A]')}`}>{card.value}</p>
+          </div>
+        ))}
       </div>
     )}
 
-    {!loadingSalesReport && !salesReportData && (
-      <div className={`rounded-xl border p-12 text-center ${darkMode ? 'bg-[#111827] border-[#1f2937]' : 'bg-white border-[#E3E8EF]'}`}>
-        <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>No sales data available yet.</p>
+    {/* Filters */}
+    <div className={`rounded-xl border p-4 mb-6 ${darkMode ? 'bg-[#1A1A1A] border-[#2A2A2A]' : 'bg-white border-[#E3E8EF]'}`}>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div>
+          <label className={`block text-xs font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>From</label>
+          <input type="date" value={reportDateFrom} onChange={e => setReportDateFrom(e.target.value)}
+            className={`w-full px-3 py-2 rounded-lg text-sm border focus:ring-2 focus:ring-[#2FB7A1] ${darkMode ? 'bg-[#111827] border-[#1f2937] text-white' : 'bg-white border-[#E5E7EB] text-[#0F172A]'}`} />
+        </div>
+        <div>
+          <label className={`block text-xs font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>To</label>
+          <input type="date" value={reportDateTo} onChange={e => setReportDateTo(e.target.value)}
+            className={`w-full px-3 py-2 rounded-lg text-sm border focus:ring-2 focus:ring-[#2FB7A1] ${darkMode ? 'bg-[#111827] border-[#1f2937] text-white' : 'bg-white border-[#E5E7EB] text-[#0F172A]'}`} />
+        </div>
+        <div>
+          <label className={`block text-xs font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Product</label>
+          <select value={reportProductFilter} onChange={e => setReportProductFilter(e.target.value)}
+            className={`w-full px-3 py-2 rounded-lg text-sm border focus:ring-2 focus:ring-[#2FB7A1] ${darkMode ? 'bg-[#111827] border-[#1f2937] text-white' : 'bg-white border-[#E5E7EB] text-[#0F172A]'}`}>
+            <option value="">All Products</option>
+            {inventory.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className={`block text-xs font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>View</label>
+          <select value={reportViewMode} onChange={e => setReportViewMode(e.target.value)}
+            className={`w-full px-3 py-2 rounded-lg text-sm border focus:ring-2 focus:ring-[#2FB7A1] ${darkMode ? 'bg-[#111827] border-[#1f2937] text-white' : 'bg-white border-[#E5E7EB] text-[#0F172A]'}`}>
+            <option value="summary">Summary</option>
+            <option value="detailed">Detailed</option>
+          </select>
+        </div>
+      </div>
+      <div className="mt-3 flex justify-end">
+        <button onClick={exportSalesReportPDF} disabled={!salesReportData}
+          className="inline-flex items-center gap-2 px-4 py-2 bg-[#2FB7A1] text-white rounded-lg text-sm font-medium hover:bg-[#28a085] disabled:opacity-50 transition shadow-sm">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+            <line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/>
+          </svg>
+          Export PDF
+        </button>
+      </div>
+    </div>
+
+    {/* Product Breakdown Table */}
+    {loadingSalesReport ? (
+      <div className={`rounded-xl border p-8 text-center ${darkMode ? 'bg-[#1A1A1A] border-[#2A2A2A]' : 'bg-white border-[#E3E8EF]'}`}>
+        <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>Loading sales report...</p>
+      </div>
+    ) : salesReportData && salesReportData.products ? (
+      <div className={`rounded-xl border overflow-hidden mb-6 ${darkMode ? 'bg-[#1A1A1A] border-[#2A2A2A]' : 'bg-white border-[#E3E8EF]'}`}>
+
+        {/* ── Desktop Table ── */}
+        <div className="hidden md:block overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className={`${darkMode ? 'bg-[#0d1117]' : 'bg-[#F9FAFB]'}`}>
+                {['Product', 'Units Sold', 'Selling Price', 'Revenue', 'COGS (FIFO)', 'Gross Profit', 'Margin %', 'Actions'].map((h, i) => (
+                  <th key={i} className={`px-4 py-3 text-[10px] font-bold uppercase tracking-wide border-b text-left ${darkMode ? 'text-gray-500 border-[#1f2937]' : 'text-[#94A3B8] border-[#E3E8EF]'} ${i >= 1 && i <= 6 ? 'text-right' : ''}`}>
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {salesReportData.products.map((product) => {
+                const margin      = product.totalRevenue > 0 ? ((product.totalProfit / product.totalRevenue) * 100) : 0;
+                const isExpanded  = expandedProductId === product.product.id;
+                // Current selling price from inventory
+                const invProduct  = inventory.find(p => p.id === product.product.id);
+                const currentPrice = invProduct?.price || 0;
+
+                return (
+                  <React.Fragment key={product.product.id}>
+                    {/* Product row */}
+                    <tr className={`border-b transition cursor-pointer ${isExpanded ? (darkMode ? 'bg-[#0d1117]' : 'bg-[#F0FDF9]') : (darkMode ? 'border-[#1f2937] hover:bg-[#111827]' : 'border-[#F1F5F9] hover:bg-[#F8FAFC]')}`}
+                      onClick={() => {
+                        setExpandedProductId(isExpanded ? null : product.product.id);
+                        if (!isExpanded) product.batches?.forEach(b => b.batch?.id && fetchPriceHistory(b.batch.id));
+                      }}>
+                      <td className={`px-4 py-3 font-semibold ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>
+                        <div className="flex items-center gap-2">
+                          <ChevronRight size={14} className={`text-[#2FB7A1] transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                          {product.product.name}
+                        </div>
+                      </td>
+                      <td className={`px-4 py-3 text-right tabular-nums ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>{product.totalSold || 0}</td>
+                      <td className={`px-4 py-3 text-right tabular-nums ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>
+                        {formatCurrencyNaira(currentPrice)}
+                      </td>
+                      <td className={`px-4 py-3 text-right tabular-nums ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>{formatCurrencyNaira(product.totalRevenue)}</td>
+                      <td className={`px-4 py-3 text-right tabular-nums ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>{formatCurrencyNaira(product.totalCost)}</td>
+                      <td className={`px-4 py-3 text-right tabular-nums font-semibold ${(product.totalProfit || 0) >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                        {formatCurrencyNaira(product.totalProfit)}
+                      </td>
+                      <td className={`px-4 py-3 text-right tabular-nums ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>{margin.toFixed(1)}%</td>
+                      <td className="px-4 py-3 text-right">
+                        <button
+                          onClick={e => { e.stopPropagation(); setExpandedProductId(isExpanded ? null : product.product.id); if (!isExpanded) product.batches?.forEach(b => b.batch?.id && fetchPriceHistory(b.batch.id)); }}
+                          className="text-[#2FB7A1] hover:underline text-xs">
+                          {isExpanded ? 'Hide' : 'View'} Details
+                        </button>
+                      </td>
+                    </tr>
+
+                    {/* Expanded batch breakdown */}
+                    {isExpanded && (
+                      <tr>
+                        <td colSpan="8" className={`px-4 py-6 ${darkMode ? 'bg-[#020617]' : 'bg-[#F9FAFB]'}`}>
+                          <div className="space-y-6">
+
+                            {/* FIFO Batch Table */}
+                            <div>
+                              <h4 className={`font-semibold mb-3 text-sm ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>
+                                FIFO Batch Breakdown
+                                <span className={`ml-2 text-xs font-normal ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>
+                                  — selling price: {formatCurrencyNaira(currentPrice)} (current) · cost per batch (original FIFO)
+                                </span>
+                              </h4>
+                              <div className="overflow-x-auto">
+                                <table className="w-full text-sm">
+                                  <thead>
+                                    <tr className={`border-b ${darkMode ? 'border-[#1f2937]' : 'border-[#E3E8EF]'}`}>
+                                      {['Batch ID', 'Date Added', 'Batch Cost/Unit', 'Selling Price/Unit', 'Qty Sold', 'Revenue', 'COGS', 'Profit'].map((h, i) => (
+                                        <th key={i} className={`px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wide ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'} ${i >= 4 ? 'text-right' : ''}`}>{h}</th>
+                                      ))}
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {product.batches && product.batches.length > 0 ? (
+                                      product.batches.map((batchData, idx) => {
+                                        const batch     = batchData.batch;
+                                        const isExpB    = expandedBatchId === batch?.id;
+                                        const bp        = (batchData.totalProfit || 0) >= 0;
+                                        // FIFO: original batch cost, current selling price
+                                        const batchCost     = batch?.costPrice || 0;
+                                        const sellingPrice  = currentPrice || batch?.sellingPrice || 0;
+                                        const revenue       = sellingPrice * (batchData.totalSold || 0);
+                                        const cogs          = batchCost * (batchData.totalSold || 0);
+                                        const batchProfit   = revenue - cogs;
+
+                                        return (
+                                          <React.Fragment key={idx}>
+                                            <tr
+                                              onClick={() => fetchBatchTransactions(batch?.id, product.product.id)}
+                                              className={`border-b transition cursor-pointer ${isExpB ? (darkMode ? 'bg-[#2FB7A1]/10' : 'bg-[#2FB7A1]/5') : (darkMode ? 'hover:bg-[#1f2937]' : 'hover:bg-[#F8FAFC]')} ${darkMode ? 'border-[#1f2937]' : 'border-[#F1F5F9]'}`}>
+                                              <td className={`px-3 py-2.5 font-medium ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>
+                                                <div className="flex items-center gap-2">
+                                                  <ChevronRight size={12} className={`text-[#2FB7A1] flex-shrink-0 transition-transform ${isExpB ? 'rotate-90' : ''}`} />
+                                                  <span className="font-mono text-xs">{batch?.id || '—'}</span>
+                                                </div>
+                                              </td>
+                                              <td className={`px-3 py-2.5 ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>{batch?.dateAdded || '—'}</td>
+                                              {/* Original FIFO batch cost */}
+                                              <td className={`px-3 py-2.5 text-right tabular-nums ${darkMode ? 'text-gray-300' : 'text-[#64748B]'}`}>
+                                                {formatCurrencyNaira(batchCost)}
+                                              </td>
+                                              {/* Current selling price */}
+                                              <td className={`px-3 py-2.5 text-right tabular-nums font-semibold ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>
+                                                {formatCurrencyNaira(sellingPrice)}
+                                              </td>
+                                              <td className={`px-3 py-2.5 text-right tabular-nums ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>{batchData.totalSold || 0}</td>
+                                              <td className={`px-3 py-2.5 text-right tabular-nums ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>{formatCurrencyNaira(revenue)}</td>
+                                              <td className={`px-3 py-2.5 text-right tabular-nums ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>{formatCurrencyNaira(cogs)}</td>
+                                              <td className={`px-3 py-2.5 text-right tabular-nums font-semibold ${batchProfit >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                                                {formatCurrencyNaira(batchProfit)}
+                                                <span className={`block text-[10px] font-normal ${darkMode ? 'text-gray-600' : 'text-[#94A3B8]'}`}>excl. shipping</span>
+                                              </td>
+                                            </tr>
+
+                                            {/* Batch transactions drill-down */}
+                                            {isExpB && (
+                                              <tr>
+                                                <td colSpan="8" className={`px-4 py-4 ${darkMode ? 'bg-[#0d1117]' : 'bg-[#F8FAFC]'}`}>
+                                                  {loadingBatchTransactions ? (
+                                                    <p className="text-center text-sm text-[#64748B] py-4">Loading transactions...</p>
+                                                  ) : batchTransactions.length === 0 ? (
+                                                    <p className="text-center text-sm text-[#64748B] py-4">No transactions found for this batch.</p>
+                                                  ) : (
+                                                    <div>
+                                                      <p className={`text-xs font-bold uppercase tracking-wide mb-3 ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>
+                                                        {batchTransactions.length} Transaction{batchTransactions.length !== 1 ? 's' : ''} — Batch {batch?.id}
+                                                      </p>
+                                                      <table className="w-full text-xs">
+                                                        <thead>
+                                                          <tr className={`border-b ${darkMode ? 'border-[#1f2937]' : 'border-[#E3E8EF]'}`}>
+                                                            {['Order ID', 'Customer', 'Date', 'Qty', 'Amount Paid', 'Payment', 'Status'].map((h, i) => (
+                                                              <th key={i} className={`px-2 py-2 text-left font-semibold ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'} ${i >= 3 ? 'text-right' : ''}`}>{h}</th>
+                                                            ))}
+                                                          </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                          {batchTransactions.map((txn, tIdx) => {
+                                                            const prod = inventory.find(p => p.id === txn.productId);
+                                                            const baseTotal = prod ? (prod.price || 0) * (txn.quantity || 0) : 0;
+                                                            const paid = txn.amountPaid != null ? txn.amountPaid : baseTotal;
+                                                            const ship = txn.shipping || {};
+                                                            return (
+                                                              <tr key={txn.id || tIdx}
+                                                                onClick={() => setSelectedOrder(txn)}
+                                                                className={`border-b cursor-pointer transition ${darkMode ? 'border-[#1f2937] hover:bg-[#111827]' : 'border-[#F1F5F9] hover:bg-white'}`}>
+                                                                <td className={`px-2 py-2 font-mono ${darkMode ? 'text-[#2FB7A1]' : 'text-[#2FB7A1]'}`}>{txn.id}</td>
+                                                                <td className={`px-2 py-2 font-medium ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>{txn.customerName}</td>
+                                                                <td className={`px-2 py-2 ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>{txn.dateCreated || '—'}</td>
+                                                                <td className={`px-2 py-2 text-right ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>{txn.quantity}</td>
+                                                                <td className={`px-2 py-2 text-right font-semibold ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>{formatCurrencyNaira(paid)}</td>
+                                                                <td className={`px-2 py-2 text-right capitalize ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>{txn.paymentMethod || '—'}</td>
+                                                                <td className="px-2 py-2 text-right">
+                                                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${ship.status === 'shipped' ? 'bg-emerald-100 text-emerald-700' : ship.status === 'transit' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'}`}>
+                                                                    {ship.status ? ship.status.charAt(0).toUpperCase() + ship.status.slice(1) : 'Pending'}
+                                                                  </span>
+                                                                </td>
+                                                              </tr>
+                                                            );
+                                                          })}
+                                                        </tbody>
+                                                        <tfoot>
+                                                          <tr className={`border-t font-bold ${darkMode ? 'border-[#1f2937]' : 'border-[#E3E8EF]'}`}>
+                                                            <td colSpan="3" className={`px-2 py-2 ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>Total ({batchTransactions.length})</td>
+                                                            <td className={`px-2 py-2 text-right ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>{batchTransactions.reduce((s, t) => s + (t.quantity || 0), 0)}</td>
+                                                            <td className={`px-2 py-2 text-right ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>
+                                                              {formatCurrencyNaira(batchTransactions.reduce((sum, txn) => {
+                                                                const prod = inventory.find(p => p.id === txn.productId);
+                                                                const base = prod ? (prod.price || 0) * (txn.quantity || 0) : 0;
+                                                                return sum + (txn.amountPaid != null ? txn.amountPaid : base);
+                                                              }, 0))}
+                                                            </td>
+                                                            <td colSpan="2" />
+                                                          </tr>
+                                                        </tfoot>
+                                                      </table>
+                                                    </div>
+                                                  )}
+                                                </td>
+                                              </tr>
+                                            )}
+                                          </React.Fragment>
+                                        );
+                                      })
+                                    ) : (
+                                      <tr><td colSpan="8" className="px-3 py-4 text-center text-[#64748B]">No batch data available</td></tr>
+                                    )}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+
+                            {/* P&L mini summary */}
+                            <div className={`rounded-lg p-4 border ${darkMode ? 'bg-[#F9FAFB]/5 border-[#1f2937]' : 'bg-[#F9FAFB] border-[#E3E8EF]'}`}>
+                              <h4 className={`font-semibold mb-3 text-sm ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>Profit & Loss Overview</h4>
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                {[
+                                  { label: 'Total Revenue',    value: formatCurrencyNaira(product.totalRevenue) },
+                                  { label: 'Total COGS (FIFO)',value: formatCurrencyNaira(product.totalCost) },
+                                  { label: 'Gross Profit',     value: formatCurrencyNaira(product.totalProfit), color: (product.totalProfit || 0) >= 0 ? 'text-emerald-500' : 'text-red-500' },
+                                  { label: 'Margin',           value: `${margin.toFixed(1)}%`,                  color: margin >= 0 ? 'text-emerald-500' : 'text-red-500' },
+                                ].map((item, i) => (
+                                  <div key={i}>
+                                    <p className={`text-xs mb-1 ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>{item.label}</p>
+                                    <p className={`text-lg font-semibold ${item.color || (darkMode ? 'text-white' : 'text-[#0F172A]')}`}>{item.value}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </tbody>
+            <tfoot>
+              <tr className={`border-t-2 font-semibold text-sm ${darkMode ? 'bg-[#0d1117] border-[#1f2937]' : 'bg-[#F9FAFB] border-[#E3E8EF]'}`}>
+                <td className={`px-4 py-3 ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>Grand Total</td>
+                <td className={`px-4 py-3 text-right tabular-nums ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>{salesReportData.summary?.unitsSold || 0}</td>
+                <td />
+                <td className={`px-4 py-3 text-right tabular-nums ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>{formatCurrencyNaira(salesReportData.summary?.totalRevenue)}</td>
+                <td className={`px-4 py-3 text-right tabular-nums ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>{formatCurrencyNaira(salesReportData.summary?.totalCost)}</td>
+                <td className={`px-4 py-3 text-right tabular-nums ${(salesReportData.summary?.totalProfit || 0) >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>{formatCurrencyNaira(salesReportData.summary?.totalProfit)}</td>
+                <td colSpan="2" />
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        {/* ── Mobile Cards ── */}
+        <div className="md:hidden divide-y divide-[#F1F5F9] dark:divide-[#1f2937]">
+          {salesReportData.products.map((product) => {
+            const margin     = product.totalRevenue > 0 ? ((product.totalProfit / product.totalRevenue) * 100) : 0;
+            const isExpanded = expandedProductId === product.product.id;
+            const invProduct = inventory.find(p => p.id === product.product.id);
+            const currentPrice = invProduct?.price || 0;
+
+            return (
+              <div key={product.product.id}>
+                <div
+                  onClick={() => {
+                    setExpandedProductId(isExpanded ? null : product.product.id);
+                    if (!isExpanded) product.batches?.forEach(b => b.batch?.id && fetchPriceHistory(b.batch.id));
+                  }}
+                  className={`p-4 cursor-pointer transition ${isExpanded ? (darkMode ? 'bg-[#2FB7A1]/5' : 'bg-[#2FB7A1]/3') : (darkMode ? 'hover:bg-[#111827]' : 'hover:bg-[#F8FAFC]')}`}>
+                  <div className="flex items-center justify-between mb-3">
+                    <p className={`font-semibold text-sm ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>{product.product.name}</p>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${margin >= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                        {margin.toFixed(1)}%
+                      </span>
+                      <ChevronRight size={16} className={`transition-transform text-[#2FB7A1] ${isExpanded ? 'rotate-90' : ''}`} />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { label: 'Units Sold',    value: product.totalSold || 0 },
+                      { label: 'Sell Price',    value: formatCurrencyNaira(currentPrice) },
+                      { label: 'Revenue',       value: formatCurrencyNaira(product.totalRevenue) },
+                      { label: 'Profit',        value: formatCurrencyNaira(product.totalProfit), color: (product.totalProfit||0)>=0?'text-emerald-500':'text-red-500' },
+                    ].map((s, i) => (
+                      <div key={i} className={`rounded-lg p-2.5 ${darkMode ? 'bg-[#111827]' : 'bg-[#F8FAFC]'}`}>
+                        <p className={`text-[10px] font-medium uppercase tracking-wide mb-0.5 ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>{s.label}</p>
+                        <p className={`text-sm font-bold ${s.color || (darkMode ? 'text-white' : 'text-[#0F172A]')}`}>{s.value}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {isExpanded && (
+                  <div className={`px-4 pb-4 ${darkMode ? 'bg-[#0d1117]' : 'bg-[#F8FAFC]'}`}>
+                    <p className={`text-[10px] font-bold uppercase tracking-widest pt-4 pb-2 ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>Batch Breakdown</p>
+                    <div className="space-y-2">
+                      {product.batches?.map((batchData, idx) => {
+                        const batch        = batchData.batch;
+                        const batchCost    = batch?.costPrice || 0;
+                        const sellingPrice = currentPrice || batch?.sellingPrice || 0;
+                        const revenue      = sellingPrice * (batchData.totalSold || 0);
+                        const cogs         = batchCost * (batchData.totalSold || 0);
+                        const batchProfit  = revenue - cogs;
+                        const isBatchExp   = expandedBatchId === batch?.id;
+
+                        return (
+                          <div key={idx} className={`rounded-xl border overflow-hidden ${darkMode ? 'border-[#1f2937]' : 'border-[#E3E8EF]'}`}>
+                            <div onClick={() => fetchBatchTransactions(batch?.id, product.product.id)}
+                              className={`flex items-center justify-between p-3 cursor-pointer ${darkMode ? 'bg-[#111827]' : 'bg-white'}`}>
+                              <div>
+                                <p className={`text-xs font-mono font-semibold ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>{batch?.id || '—'}</p>
+                                <p className={`text-[10px] mt-0.5 ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>
+                                  {batch?.dateAdded || '—'} · Cost: {formatCurrencyNaira(batchCost)} · Sell: {formatCurrencyNaira(sellingPrice)}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className={`text-xs font-bold ${batchProfit >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>{formatCurrencyNaira(batchProfit)}</span>
+                                <ChevronRight size={13} className={`transition-transform text-[#2FB7A1] ${isBatchExp ? 'rotate-90' : ''}`} />
+                              </div>
+                            </div>
+                            <div className={`grid grid-cols-3 divide-x border-t ${darkMode ? 'divide-[#1f2937] border-[#1f2937] bg-[#0d1117]' : 'divide-[#F1F5F9] border-[#F1F5F9] bg-[#F8FAFC]'}`}>
+                              {[
+                                { label: 'Sold',    value: batchData.totalSold || 0 },
+                                { label: 'Revenue', value: formatCurrencyNaira(revenue) },
+                                { label: 'COGS',    value: formatCurrencyNaira(cogs) },
+                              ].map((s, i) => (
+                                <div key={i} className="text-center py-2">
+                                  <p className={`text-[9px] font-semibold uppercase tracking-wide ${darkMode ? 'text-gray-600' : 'text-[#94A3B8]'}`}>{s.label}</p>
+                                  <p className={`text-xs font-bold ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>{s.value}</p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    ) : (
+      <div className={`rounded-xl border p-8 text-center ${darkMode ? 'bg-[#1A1A1A] border-[#2A2A2A]' : 'bg-white border-[#E3E8EF]'}`}>
+        <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>No sales data available.</p>
       </div>
     )}
   </div>
