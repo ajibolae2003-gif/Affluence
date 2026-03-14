@@ -84,20 +84,6 @@ const apiCall = async (endpoint, options = {}) => {
 // Debounce ref for shipping updates
 
 
-const handleUpdateShippingDebounced = (orderId, updates) => {
-  // Update local state immediately for snappy UI
-  setShippingQueue(prev => prev.map(s => s.id === orderId ? { ...s, ...updates } : s));
-  if (selectedShipping?.id === orderId) {
-    setSelectedShipping(prev => ({ ...prev, ...updates }));
-  }
-  // Debounce the server call by 800ms
-  if (shippingDebounceRef.current[orderId]) {
-    clearTimeout(shippingDebounceRef.current[orderId]);
-  }
-  shippingDebounceRef.current[orderId] = setTimeout(() => {
-    handleUpdateShipping(orderId, updates);
-  }, 800);
-};
 
 const InventorySystem = ({ onLogout }) => {
   const [activeTab, setActiveTab] = useState('inventory');
@@ -105,6 +91,21 @@ const InventorySystem = ({ onLogout }) => {
   const [modalType, setModalType] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const shippingDebounceRef = useRef({});
+  const handleUpdateShippingDebounced = (orderId, updates) => {
+    // Update local state immediately for snappy UI
+    setShippingQueue(prev => prev.map(s => s.id === orderId ? { ...s, ...updates } : s));
+    if (selectedShipping?.id === orderId) {
+      setSelectedShipping(prev => ({ ...prev, ...updates }));
+    }
+    // Debounce the server call by 800ms
+    if (shippingDebounceRef.current[orderId]) {
+      clearTimeout(shippingDebounceRef.current[orderId]);
+    }
+    shippingDebounceRef.current[orderId] = setTimeout(() => {
+      handleUpdateShipping(orderId, updates);
+    }, 800);
+  };
+  
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [notifications, setNotifications] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -248,6 +249,7 @@ const InventorySystem = ({ onLogout }) => {
     })}`;
   };
 
+  
   const formatReportDate = (value) => {
     if (!value) return '—';
     const d = new Date(value);
