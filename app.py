@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify
-from flask_cors import CORS
+#from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime, timezone
 import os
@@ -21,23 +21,30 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 import atexit
 from pathlib import Path
+load_dotenv(dotenv_path=Path(__file__).parent / ".env")
 
 resend.api_key = "re_3YXkitfT_JNgrf6SfSazPjMXsDLW2tX4n"
 REPORT_EMAIL = "ajibolae2003@gmail.com"
 REPORT_INTERVAL_DAYS = 7  # Change this to whatever interval you want
 app = Flask(__name__)
-load_dotenv(dotenv_path=Path(__file__).parent / ".env")
-# Enhanced CORS configuration - Allow all origins for development
-# For production, replace '*' with specific origins
-# Set automatic_options=True to handle OPTIONS automatically
-CORS(app, 
-     resources={r"/api/*": {
-         "origins": ["http://localhost:5173", "https://affluence-gilt.vercel.app"],
-         "methods": ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
-         "allow_headers": ["Content-Type", "Authorization"]
-     }},
-     supports_credentials=False,
-     automatic_options=True)
+
+@app.after_request
+def add_cors_headers(response):
+    allowed_origins = [
+        "http://localhost:5173",
+        "https://affluence-gilt.vercel.app",
+    ]
+    origin = request.headers.get("Origin", "")
+    if origin in allowed_origins:
+        response.headers["Access-Control-Allow-Origin"] = origin
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PATCH, PUT, DELETE, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+    return response
+
+@app.before_request
+def handle_options():
+    if request.method == "OPTIONS":
+        return "", 204
 
 # Database configuration - Using SQLite for simplicity, can be changed to PostgreSQL
 basedir = os.path.abspath(os.path.dirname(__file__))
@@ -1568,16 +1575,17 @@ GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
 
 
 #GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET")
-
-@app.route('/api/auth/google/callback', methods=['POST'])
+@app.route('/api/auth/google/callback', methods=['POST', 'OPTIONS'])  # ← add OPTIONS
 def google_oauth_callback():
+    if request.method == 'OPTIONS':
+        return '', 204  # ← handle preflight immediately
+    
     try:
         data = request.get_json()
         code = data.get('code')
         if not code:
             return jsonify({'error': 'No code provided'}), 400
 
-        # Exchange code for tokens
         token_response = requests.post('https://oauth2.googleapis.com/token', data={
             'code': code,
             'client_id': GOOGLE_CLIENT_ID,
@@ -1587,13 +1595,11 @@ def google_oauth_callback():
         })
 
         if not token_response.ok:
-            print('Google token error:', token_response.text)  # ← add this
+            print('Google token error:', token_response.text)
             return jsonify({'error': 'Token exchange failed', 'details': token_response.text}), 400
 
         tokens = token_response.json()
         id_token = tokens.get('id_token')
-
-        # Decode the ID token (no signature verify needed — Google already validated it)
         profile = jwt.decode(id_token, options={"verify_signature": False})
 
         return jsonify({
