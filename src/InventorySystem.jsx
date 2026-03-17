@@ -5190,8 +5190,10 @@ const InventorySystem = ({ onLogout }) => {
                     {/* Product row */}
                     <tr className={`border-b transition cursor-pointer ${isExpanded ? (darkMode ? 'bg-[#0d1117]' : 'bg-[#F0FDF9]') : (darkMode ? 'border-[#1f2937] hover:bg-[#111827]' : 'border-[#F1F5F9] hover:bg-[#F8FAFC]')}`}
                       onClick={() => {
-                        setExpandedProductId(isExpanded ? null : product.product.id);
-                        if (!isExpanded) product.batches?.forEach(b => b.batch?.id && fetchPriceHistory(b.batch.id));
+                        toggleProductExpand(product.product.id, product.batches);
+                        if (!expandedProductIds.has(product.product.id)) {
+                          product.batches?.forEach(b => b.batch?.id && fetchPriceHistory(b.batch.id));
+                        }
                       }}>
                       <td className={`px-4 py-3 font-semibold ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>
                         <div className="flex items-center gap-2">
@@ -5211,7 +5213,7 @@ const InventorySystem = ({ onLogout }) => {
                       <td className={`px-4 py-3 text-right tabular-nums ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>{margin.toFixed(1)}%</td>
                       <td className="px-4 py-3 text-right">
                         <button
-                          onClick={e => { e.stopPropagation(); setExpandedProductId(isExpanded ? null : product.product.id); if (!isExpanded) product.batches?.forEach(b => b.batch?.id && fetchPriceHistory(b.batch.id)); }}
+                          onClick={e => { e.stopPropagation(); toggleProductExpand(product.product.id, product.batches); if (!expandedProductIds.has(product.product.id)) product.batches?.forEach(b => b.batch?.id && fetchPriceHistory(b.batch.id)); }}
                           className="text-[#2FB7A1] hover:underline text-xs">
                           {isExpanded ? 'Hide' : 'View'} Details
                         </button>
