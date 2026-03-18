@@ -4231,7 +4231,6 @@ const InventorySystem = ({ onLogout }) => {
                     ))}
                   </div>
                 </div>
-
                 {activeReportTab === 'customer' && (
                     <div>
                       {/* Summary Cards */}
