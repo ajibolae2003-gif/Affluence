@@ -6899,92 +6899,9 @@ const InventorySystem = ({ onLogout }) => {
   </div>
 
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Delivery Cost
-                      </label>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400">$</span>
-                        <input
-                          name="shippingCost"
-                          id="shipping-input-mobile"
-                          type="text"
-                          inputMode="decimal"
-                          placeholder="0.00"
-                          defaultValue="0"
-                          onInput={(e) => { e.target.value = formatWithCommas(e.target.value); e.target.form?.dispatchEvent(new Event('input', { bubbles: true })); }}
-                          className={`w-full pl-8 pr-4 py-3 border rounded-lg transition-all ${
-                            darkMode
-                              ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white placeholder-gray-400 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
-                              : 'bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
-                          }`}
-                        />
-                      </div>
-                    </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Total Cost (AUTO)
-                      </label>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400">$</span>
-                        <input
-                          id="total-cost-display-mobile"
-                          type="text"
-                          readOnly
-                          defaultValue="0.00"
-                          className={`w-full pl-8 pr-4 py-3 border rounded-lg ${
-                            darkMode
-                              ? 'bg-gray-700/50 border-[#2A2A2A] text-gray-300 cursor-not-allowed'
-                              : 'bg-gray-100 border-gray-300 text-gray-700 cursor-not-allowed'
-                          }`}
-                        />
-                      </div>
                     </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Cost per Unit (AUTO)
-                      </label>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400">$</span>
-                        <input
-                          name="cost"
-                          id="cost-input-mobile"
-                          type="text"
-                          readOnly
-                          defaultValue="0.00"
-                          className={`w-full pl-8 pr-4 py-3 border rounded-lg ${
-                            darkMode
-                              ? 'bg-gray-700/50 border-[#2A2A2A] text-gray-300 cursor-not-allowed'
-                              : 'bg-gray-100 border-gray-300 text-gray-700 cursor-not-allowed'
-                          }`}
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Selling Price <span className="text-red-500">*</span>
-                      </label>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400">$</span>
-                        <input
-                          name="price"
-                          id="price-input-mobile"
-                          type="text"
-                          inputMode="decimal"
-                          placeholder="0.00"
-                          onInput={(e) => { e.target.value = formatWithCommas(e.target.value); e.target.form?.dispatchEvent(new Event('input', { bubbles: true })); }}
-                          className={`w-full pl-8 pr-4 py-3 border rounded-lg transition-all ${
-                            darkMode
-                              ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white placeholder-gray-400 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
-                              : 'bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
-                          }`}
-                        />
-                      </div>
-                    </div>
-                  </div>
+                  
                   
  
 
