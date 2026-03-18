@@ -6767,173 +6767,46 @@ const InventorySystem = ({ onLogout }) => {
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Pricing Section</h3>
                 </div>
                 
-                {/* Highlighted Card with Horizontal Layout */}
                 <div className={`p-6 rounded-xl border-2 ${
-  darkMode 
-    ? 'bg-[#1A1A1A]/80 border-[#2FB7A1]/30' 
-    : 'bg-gradient-to-br from-[#F0FDF4] to-[#ECFDF5] border-[#2FB7A1]/20'
-}`}>
-  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+                  darkMode 
+                    ? 'bg-[#1A1A1A]/80 border-[#2FB7A1]/30' 
+                    : 'bg-gradient-to-br from-[#F0FDF4] to-[#ECFDF5] border-[#2FB7A1]/20'
+                }`}>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
-    {/* 1 — Total Amount Paid */}
-{/* Total Amount Paid */}
-    <div className="sm:col-span-1 lg:col-span-1">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Total Amount Paid <span className="text-red-500">*</span>
-          </label>
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400">$</span>
-            <input
-              name="totalAmountPaid"
-              id="total-amount-paid-input"
-              type="text"
-              inputMode="decimal"
-              placeholder="0.00"
-              onInput={(e) => {
-                e.target.value = formatWithCommas(e.target.value);
-                e.target.form?.dispatchEvent(new Event('input', { bubbles: true }));
-              }}
-              className={`w-full pl-8 pr-4 py-3 border rounded-lg transition-all ${
-                darkMode
-                  ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white placeholder-gray-400 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
-                  : 'bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
-              }`}
-            />
-          </div>
-    </div>
-
-      {/* Delivery Cost */}
-      <div className="sm:col-span-1 lg:col-span-1">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Delivery Cost
-            </label>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400">$</span>
-              <input
-                name="shippingCost"
-                id="shipping-input"
-                type="text"
-                inputMode="decimal"
-                placeholder="0.00"
-                defaultValue="0"
-                onInput={(e) => {
-                  e.target.value = formatWithCommas(e.target.value);
-                  e.target.form?.dispatchEvent(new Event('input', { bubbles: true }));
-                }}
-                className={`w-full pl-8 pr-3 py-3 border rounded-lg transition-all text-sm ${
-                  darkMode
-                    ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white placeholder-gray-400 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
-                    : 'bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
-                }`}
-              />
-            </div>
-          </div>
-
-    {/* Total Cost (auto) */}
-    <div className="sm:col-span-1 lg:col-span-1">
-      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-        Total Cost <span className="text-xs font-normal text-gray-400">(auto)</span>
-      </label>
-      <div className="relative">
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400">$</span>
-        <input
-          id="total-cost-display"
-          type="text"
-          readOnly
-          defaultValue="0.00"
-          className={`w-full pl-8 pr-3 py-3 border rounded-lg text-sm cursor-not-allowed ${
-            darkMode
-              ? 'bg-gray-700/50 border-[#2A2A2A] text-gray-300'
-              : 'bg-gray-100 border-gray-300 text-gray-700'
-          }`}
-        />
-      </div>
-    </div>
-
-        {/* Cost per Unit (auto) */}
-        <div className="sm:col-span-1 lg:col-span-1">
-      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-        Cost / Unit <span className="text-xs font-normal text-gray-400">(auto)</span>
-      </label>
-      <div className="relative">
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400">$</span>
-        <input
-          name="cost"
-          id="cost-input"
-          type="text"
-          readOnly
-          defaultValue="0.00"
-          className={`w-full pl-8 pr-3 py-3 border rounded-lg text-sm cursor-not-allowed ${
-            darkMode
-              ? 'bg-gray-700/50 border-[#2A2A2A] text-gray-300'
-              : 'bg-gray-100 border-gray-300 text-gray-700'
-          }`}
-        />
-      </div>
-    </div>
-
-
-{/* Selling Price */}
-<div className="sm:col-span-2 lg:col-span-1">
-      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-        Selling Price <span className="text-red-500">*</span>
-      </label>
-      <div className="relative">
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400">$</span>
-        <input
-          name="price"
-          id="price-input"
-          type="text"
-          inputMode="decimal"
-          placeholder="0.00"
-          onInput={(e) => {
-            e.target.value = formatWithCommas(e.target.value);
-            e.target.form?.dispatchEvent(new Event('input', { bubbles: true }));
-          }}
-          className={`w-full pl-8 pr-3 py-3 border rounded-lg transition-all text-sm ${
-            darkMode
-              ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white placeholder-gray-400 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
-              : 'bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
-          }`}
-        />
-      </div>
-    </div>
-
-  </div>
-</div>
-
-                  {/* Tablet: Two Rows */}
-                  <div className="hidden sm:grid sm:grid-cols-2 md:hidden gap-4">
+                    {/* Total Amount Paid */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         Total Amount Paid <span className="text-red-500">*</span>
                       </label>
                       <div className="relative">
-                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400">$</span>
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400">$</span>
                         <input
-                         name="totalAmountPaid"
-                         id="total-amount-paid-input-tablet"
-                         type="text"
-                         inputMode="decimal"
-                         placeholder="0.00"
-                         tabIndex={-1}
-                         onInput={(e) => { e.target.value = formatWithCommas(e.target.value); e.target.form?.dispatchEvent(new Event('input', { bubbles: true })); }}
-                         className={`w-full pl-8 pr-4 py-3 border rounded-lg transition-all ${
+                          name="totalAmountPaid"
+                          id="total-amount-paid-input"
+                          type="text"
+                          inputMode="decimal"
+                          placeholder="0.00"
+                          onInput={(e) => {
+                            e.target.value = formatWithCommas(e.target.value);
+                            e.target.form?.dispatchEvent(new Event('input', { bubbles: true }));
+                          }}
+                          className={`w-full pl-8 pr-4 py-3 border rounded-lg transition-all ${
                             darkMode
                               ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white placeholder-gray-400 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
                               : 'bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
                           }`}
-                          
                         />
                       </div>
                     </div>
 
+                    {/* Delivery Cost */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         Delivery Cost
                       </label>
                       <div className="relative">
-                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400">$</span>
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400">$</span>
                         <input
                           name="shippingCost"
                           id="shipping-input"
@@ -6941,7 +6814,10 @@ const InventorySystem = ({ onLogout }) => {
                           inputMode="decimal"
                           placeholder="0.00"
                           defaultValue="0"
-                          onInput={(e) => { e.target.value = formatWithCommas(e.target.value); e.target.form?.dispatchEvent(new Event('input', { bubbles: true })); }}
+                          onInput={(e) => {
+                            e.target.value = formatWithCommas(e.target.value);
+                            e.target.form?.dispatchEvent(new Event('input', { bubbles: true }));
+                          }}
                           className={`w-full pl-8 pr-3 py-3 border rounded-lg transition-all text-sm ${
                             darkMode
                               ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white placeholder-gray-400 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
@@ -6951,95 +6827,77 @@ const InventorySystem = ({ onLogout }) => {
                       </div>
                     </div>
 
+                    {/* Total Cost (auto) */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Total Cost (AUTO)
+                        Total Cost <span className="text-xs font-normal text-gray-400">(auto)</span>
                       </label>
                       <div className="relative">
-                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400">$</span>
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400">$</span>
                         <input
-                          id="total-cost-display-tablet"
+                          id="total-cost-display"
                           type="text"
                           readOnly
                           defaultValue="0.00"
-                          className={`w-full pl-8 pr-4 py-3 border rounded-lg ${
+                          className={`w-full pl-8 pr-3 py-3 border rounded-lg text-sm cursor-not-allowed ${
                             darkMode
-                              ? 'bg-gray-700/50 border-[#2A2A2A] text-gray-300 cursor-not-allowed'
-                              : 'bg-gray-100 border-gray-300 text-gray-700 cursor-not-allowed'
+                              ? 'bg-gray-700/50 border-[#2A2A2A] text-gray-300'
+                              : 'bg-gray-100 border-gray-300 text-gray-700'
                           }`}
                         />
                       </div>
                     </div>
 
+                    {/* Cost per Unit (auto) */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Cost per Unit (AUTO)
+                        Cost / Unit <span className="text-xs font-normal text-gray-400">(auto)</span>
                       </label>
                       <div className="relative">
-                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400">$</span>
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400">$</span>
                         <input
                           name="cost"
-                          id="cost-input-tablet"
+                          id="cost-input"
                           type="text"
                           readOnly
                           defaultValue="0.00"
-                          className={`w-full pl-8 pr-4 py-3 border rounded-lg ${
+                          className={`w-full pl-8 pr-3 py-3 border rounded-lg text-sm cursor-not-allowed ${
                             darkMode
-                              ? 'bg-gray-700/50 border-[#2A2A2A] text-gray-300 cursor-not-allowed'
-                              : 'bg-gray-100 border-gray-300 text-gray-700 cursor-not-allowed'
+                              ? 'bg-gray-700/50 border-[#2A2A2A] text-gray-300'
+                              : 'bg-gray-100 border-gray-300 text-gray-700'
                           }`}
                         />
                       </div>
                     </div>
 
-                    <div className="col-span-2">
+                    {/* Selling Price - full width on all sizes */}
+                    <div className="sm:col-span-2">
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         Selling Price <span className="text-red-500">*</span>
                       </label>
                       <div className="relative">
-                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400">$</span>
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400">$</span>
                         <input
                           name="price"
-                          id="price-input-desktop"
+                          id="price-input"
                           type="text"
                           inputMode="decimal"
                           placeholder="0.00"
-                          onInput={(e) => { e.target.value = formatWithCommas(e.target.value); e.target.form?.dispatchEvent(new Event('input', { bubbles: true })); }}
+                          onInput={(e) => {
+                            e.target.value = formatWithCommas(e.target.value);
+                            e.target.form?.dispatchEvent(new Event('input', { bubbles: true }));
+                          }}
                           className={`w-full pl-8 pr-3 py-3 border rounded-lg transition-all text-sm ${
                             darkMode
                               ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white placeholder-gray-400 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
                               : 'bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
                           }`}
-                          
                         />
                       </div>
                     </div>
+
                   </div>
 
-                  {/* Mobile: Stack Vertically */}
-                  <div className="grid sm:hidden gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Total Amount Paid <span className="text-red-500">*</span>
-                      </label>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400">$</span>
-                        <input
-                          name="totalAmountPaid"
-                          id="total-amount-paid-input-mobile"
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          placeholder="0.00"
-                          className={`w-full pl-8 pr-4 py-3 border rounded-lg transition-all ${
-                            darkMode
-                              ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white placeholder-gray-400 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
-                              : 'bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
-                          }`}
-                         
-                        />
-                      </div>
-                    </div>
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
