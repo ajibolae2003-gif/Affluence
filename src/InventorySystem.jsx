@@ -4207,28 +4207,30 @@ const InventorySystem = ({ onLogout }) => {
                 <h2 className="text-2xl font-semibold text-[#0F172A] dark:text-white mb-6">Reports</h2>
                 
                 {/* Report Sub-Tabs Navigation */}
-                <div className="mb-6 border-b border-[#E3E8EF] dark:border-[#2A2A2A]">
-                  <div className="flex flex-wrap gap-2">
-                    {[
-                      { id: 'customer', label: 'Customer Report' },
-                      { id: 'inventory', label: 'Inventory Report' },
-                      { id: 'sales', label: 'Sales Report' },
-                      { id: 'profit', label: 'Profit & Loss' },
-                      { id: 'stockMovement', label: 'Stock Movement' },
-                      { id: 'priceLog', label: 'Price Change Log' }
-                    ].map((tab) => (
-                      <button
-                        key={tab.id}
-                        onClick={() => setActiveReportTab(tab.id)}
-                        className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${
-                          activeReportTab === tab.id
-                            ? 'border-[#2FB7A1] text-[#2FB7A1] dark:text-[#2FB7A1]'
-                            : 'border-transparent text-[#64748B] hover:text-[#0F172A] dark:hover:text-white'
-                        }`}
-                      >
-                        {tab.label}
-                      </button>
-                    ))}
+                <div className="mb-6">
+                  <div className="overflow-x-auto -mx-4 px-4">
+                    <div className="flex gap-1 min-w-max border-b border-[#E3E8EF] dark:border-[#2A2A2A]">
+                      {[
+                        { id: 'customer',      label: 'Customers' },
+                        { id: 'inventory',     label: 'Inventory' },
+                        { id: 'sales',         label: 'Sales' },
+                        { id: 'profit',        label: 'Profit & Loss' },
+                        { id: 'stockMovement', label: 'Stock' },
+                        { id: 'priceLog',      label: 'Price Log' },
+                      ].map((tab) => (
+                        <button
+                          key={tab.id}
+                          onClick={() => setActiveReportTab(tab.id)}
+                          className={`px-3 py-2.5 text-sm font-medium whitespace-nowrap transition-colors border-b-2 -mb-px ${
+                            activeReportTab === tab.id
+                              ? 'border-[#2FB7A1] text-[#2FB7A1]'
+                              : 'border-transparent text-[#64748B] hover:text-[#0F172A] dark:hover:text-white'
+                          }`}
+                        >
+                          {tab.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
                 {activeReportTab === 'customer' && (
