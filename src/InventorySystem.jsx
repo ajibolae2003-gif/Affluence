@@ -2393,12 +2393,9 @@ const InventorySystem = ({ onLogout }) => {
       </div>
   )
 ) : (
-  // Mobile Card View — compact & scannable
-  <div className="space-y-2">
+  <div className="space-y-2 px-1">
     {filteredInventory.length === 0 ? (
-      <div className={`rounded-xl border p-10 text-center ${
-        darkMode ? 'bg-[#111827] border-[#1f2937]' : 'bg-white border-[#E3E8EF]'
-      }`}>
+      <div className={`rounded-xl border p-10 text-center ${darkMode ? 'bg-[#111827] border-[#1f2937]' : 'bg-white border-[#E3E8EF]'}`}>
         <Package size={40} className={`mx-auto mb-3 ${darkMode ? 'text-gray-700' : 'text-[#CBD5E1]'}`} />
         <p className={`font-medium text-sm ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>No products found</p>
         <p className={`text-xs mt-1 ${darkMode ? 'text-gray-600' : 'text-[#94A3B8]'}`}>Try adjusting your search or filters</p>
@@ -2410,150 +2407,121 @@ const InventorySystem = ({ onLogout }) => {
         const isOut      = item.quantity === 0;
         const isCritical = !isOut && item.quantity < 20;
         const isLow      = !isOut && !isCritical && item.quantity < 50;
-        const isOk       = item.quantity >= 50;
-
-        const statusLabel = isOut      ? 'OUT'  : isCritical ? 'CRIT' : isLow ? 'LOW' : 'OK';
-        const statusColor = isOut || isCritical
-          ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-          : isLow
-          ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
-          : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400';
-
-        const barColor = isOut || isCritical ? 'bg-red-500' : isLow ? 'bg-amber-400' : 'bg-emerald-500';
-
+        const accentColor = isOut || isCritical ? '#EF4444' : isLow ? '#F59E0B' : '#10B981';
         const margin = Number(item.price ?? 0) - Number(item.cost ?? 0);
+        const itemCategory = productCategories[item.id] || item.category || 'Uncategorized';
+
+        const statusLabel = isOut ? 'Out of Stock' : isCritical ? 'Critical' : isLow ? 'Low Stock' : 'In Stock';
+        const statusStyle = isOut || isCritical
+          ? 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+          : isLow
+          ? 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+          : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400';
 
         return (
           <div
             key={item.id}
             onClick={() => setSelectedProduct(item)}
-            className={`rounded-xl border overflow-hidden active:scale-[0.99] transition-transform cursor-pointer ${
-              darkMode
-                ? 'bg-[#111827] border-[#1f2937]'
-                : 'bg-white border-[#E3E8EF]'
+            className={`rounded-xl border overflow-hidden cursor-pointer active:scale-[0.99] transition-transform ${
+              darkMode ? 'bg-[#111827] border-[#1f2937]' : 'bg-white border-[#E3E8EF]'
             }`}
           >
-            {/* ── Row 1: avatar + name + status badge ── */}
-            <div className="flex items-center gap-3 px-4 pt-3.5 pb-2">
-              {/* Avatar */}
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#2FB7A1] to-[#1F3A5F] flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
-                {item.name.substring(0, 2).toUpperCase()}
-              </div>
+            {/* Color accent bar */}
+            <div className="h-[3px] w-full" style={{ background: accentColor }} />
 
-              {/* Name + ID */}
-              <div className="flex-1 min-w-0">
-                <p className={`font-semibold text-sm leading-tight truncate ${
-                  darkMode ? 'text-white' : 'text-[#0F172A]'
-                }`}>
-                  {item.name}
-                </p>
-                <p className={`text-[11px] font-mono mt-0.5 ${
-                  darkMode ? 'text-gray-500' : 'text-[#94A3B8]'
-                }`}>
-                  {item.id}
-                </p>
-              </div>
-
-              {/* Status badge */}
-              <span className={`text-[10px] font-bold px-2 py-1 rounded-md flex-shrink-0 ${statusColor} ${
-                isCritical ? 'animate-pulse' : ''
-              }`}>
-                {statusLabel}
-              </span>
-            </div>
-
-            {/* ── Stock progress bar ── */}
-            <div className="px-4 pb-2">
-              <div className={`w-full h-1.5 rounded-full ${darkMode ? 'bg-gray-800' : 'bg-[#F1F5F9]'}`}>
+            <div className="p-3">
+              {/* Row 1: avatar + name + status */}
+              <div className="flex items-center gap-3 mb-2.5">
                 <div
-                  className={`h-1.5 rounded-full transition-all ${barColor}`}
-                  style={{ width: `${Math.min(stockPct, 100)}%` }}
+                  className="w-10 h-10 rounded-lg flex items-center justify-center text-white text-xs font-semibold flex-shrink-0"
+                  style={{ background: `linear-gradient(135deg, ${accentColor}cc, ${accentColor}66)` }}
+                >
+                  {item.name.substring(0, 2).toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className={`font-semibold text-sm leading-tight truncate ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>
+                    {item.name}
+                  </p>
+                  <p className={`text-[11px] font-mono mt-0.5 ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>
+                    {item.id}
+                  </p>
+                </div>
+                <span className={`text-[10px] font-semibold px-2 py-1 rounded-full flex-shrink-0 ${statusStyle} ${isCritical ? 'animate-pulse' : ''}`}>
+                  {statusLabel}
+                </span>
+              </div>
+
+              {/* Stock progress bar */}
+              <div className={`w-full h-[3px] rounded-full mb-3 overflow-hidden ${darkMode ? 'bg-[#1f2937]' : 'bg-[#F1F5F9]'}`}>
+                <div
+                  className="h-full rounded-full transition-all duration-700"
+                  style={{ width: `${Math.min(stockPct, 100)}%`, background: accentColor }}
                 />
               </div>
-            </div>
 
-            {/* ── Row 2: three inline stats ── */}
-            <div className={`flex items-center divide-x px-0 pb-3 ${
-              darkMode ? 'divide-[#1f2937]' : 'divide-[#F1F5F9]'
-            }`}>
-              {/* Stock */}
-              <div className="flex-1 text-center px-3">
-                <p className={`text-[10px] uppercase tracking-wide font-medium mb-0.5 ${
-                  darkMode ? 'text-gray-500' : 'text-[#94A3B8]'
-                }`}>Stock</p>
-                <p className={`text-base font-bold leading-none ${
-                  darkMode ? 'text-white' : 'text-[#0F172A]'
-                }`}>
-                  {item.quantity ?? 0}
-                </p>
+              {/* Stats row */}
+              <div className={`grid grid-cols-3 rounded-lg overflow-hidden border ${darkMode ? 'border-[#1f2937]' : 'border-[#E3E8EF]'}`}>
+                {[
+                  { label: 'Stock', value: item.quantity ?? 0, color: isOut || isCritical ? '#EF4444' : isLow ? '#F59E0B' : undefined },
+                  { label: 'Sold', value: item.sold ?? 0, color: '#2FB7A1' },
+                  { label: 'Price', value: `$${Number(item.price ?? 0).toLocaleString()}` },
+                ].map((stat, i) => (
+                  <div
+                    key={i}
+                    className={`py-2 text-center ${i < 2 ? `border-r ${darkMode ? 'border-[#1f2937]' : 'border-[#E3E8EF]'}` : ''}`}
+                  >
+                    <p className={`text-[9px] uppercase tracking-wider font-semibold mb-0.5 ${darkMode ? 'text-gray-600' : 'text-[#94A3B8]'}`}>
+                      {stat.label}
+                    </p>
+                    <p
+                      className="text-base font-semibold leading-none"
+                      style={{ color: stat.color || (darkMode ? '#fff' : '#0F172A') }}
+                    >
+                      {stat.value}
+                    </p>
+                  </div>
+                ))}
               </div>
 
-              {/* Sold */}
-              <div className="flex-1 text-center px-3">
-                <p className={`text-[10px] uppercase tracking-wide font-medium mb-0.5 ${
-                  darkMode ? 'text-gray-500' : 'text-[#94A3B8]'
-                }`}>Sold</p>
-                <p className="text-base font-bold leading-none text-[#2FB7A1]">
-                  {item.sold ?? 0}
-                </p>
+              {/* Footer: category + date + margin */}
+              <div className={`flex items-center justify-between mt-2.5 pt-2.5 border-t ${darkMode ? 'border-[#1f2937]' : 'border-[#F1F5F9]'}`}>
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${darkMode ? 'bg-[#1f2937] text-gray-400' : 'bg-[#F1F5F9] text-[#64748B]'}`}>
+                    {itemCategory}
+                  </span>
+                  <span className={`text-[10px] ${darkMode ? 'text-gray-600' : 'text-[#CBD5E1]'}`}>
+                    {item.dateReceived}
+                  </span>
+                </div>
+                <span className={`text-[11px] font-semibold flex-shrink-0 ${margin >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                  Margin ${margin.toFixed(0)}
+                </span>
               </div>
 
-              {/* Price */}
-              <div className="flex-1 text-center px-3">
-                <p className={`text-[10px] uppercase tracking-wide font-medium mb-0.5 ${
-                  darkMode ? 'text-gray-500' : 'text-[#94A3B8]'
-                }`}>Price</p>
-                <p className={`text-base font-bold leading-none ${
-                  darkMode ? 'text-white' : 'text-[#0F172A]'
-                }`}>
-                  ${Number(item.price ?? 0).toLocaleString()}
-                </p>
-              </div>
-            </div>
-
-            {/* ── Footer: date + margin ── */}
-            <div className={`flex items-center justify-between px-4 py-2 border-t ${
-              darkMode
-                ? 'bg-[#0d1117] border-[#1f2937]'
-                : 'bg-[#F8FAFC] border-[#F1F5F9]'
-            }`}>
-              <span className={`text-[11px] ${darkMode ? 'text-gray-600' : 'text-[#94A3B8]'}`}>
-                {item.dateReceived}
-              </span>
-              <span className={`text-[11px] font-semibold ${
-                margin >= 0
-                  ? 'text-emerald-600 dark:text-emerald-400'
-                  : 'text-red-500 dark:text-red-400'
-              }`}>
-                Margin ${margin.toFixed(0)}
-              </span>
-            </div>
-
-            {/* ── Staff: Add Quantity button ── */}
-            {userRole === 'staff' && (
-              <div className={`px-4 pb-3 pt-2 border-t ${
-                darkMode ? 'border-[#1f2937]' : 'border-[#F1F5F9]'
-              }`}>
+              {/* Staff add qty button */}
+              {userRole === 'staff' && (
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setProductToUpdate(item);
-                    openModal('addQuantity');
-                  }}
-                  className="w-full bg-[#2563EB] hover:bg-blue-700 active:bg-blue-800 text-white py-2 rounded-lg text-sm font-medium transition"
+                  onClick={(e) => { e.stopPropagation(); setProductToUpdate(item); openModal('addQuantity'); }}
+                  className="mt-2.5 w-full py-2 rounded-lg text-xs font-semibold bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white transition"
                 >
                   + Add Quantity
                 </button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
+          
         );
+      
       })
+    
     )}
-  </div>
+    
+    </div>
 )}
   </div>
 )}
+
+
             {/* Customers Tab */}
             {activeTab === 'customers' && (
   <div>
