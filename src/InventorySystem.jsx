@@ -2504,7 +2504,7 @@ const InventorySystem = ({ onLogout }) => {
                 {[
                   { label: 'Stock', value: item.quantity ?? 0, color: isOut || isCritical ? '#EF4444' : isLow ? '#F59E0B' : undefined },
                   { label: 'Sold', value: item.sold ?? 0, color: '#2FB7A1' },
-                  { label: 'Price', value: `$${Number(item.price ?? 0).toLocaleString()}` },
+                  { label: 'Price', value: `$${formatCurrency(item.price)}` },
                 ].map((stat, i) => (
                   <div
                     key={i}
