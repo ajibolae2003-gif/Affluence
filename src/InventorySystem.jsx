@@ -190,6 +190,19 @@ const InventorySystem = ({ onLogout }) => {
   const [productAmountInputs, setProductAmountInputs] = useState({});
   const [orderQuantities, setOrderQuantities] = useState({});
   const [orderExpectedTotal, setOrderExpectedTotal] = useState(0);
+  const [currency, setCurrency] = useState(() => {
+    return localStorage.getItem('currency') || 'USD';
+  });
+  
+  const currencyOptions = {
+    USD: { symbol: '$', code: 'USD', locale: 'en-US' },
+    NGN: { symbol: '₦', code: 'NGN', locale: 'en-NG' },
+    GBP: { symbol: '£', code: 'GBP', locale: 'en-GB' },
+    EUR: { symbol: '€', code: 'EUR', locale: 'en-EU' },
+    GHS: { symbol: '₵', code: 'GHS', locale: 'en-GH' },
+    KES: { symbol: 'KSh', code: 'KES', locale: 'en-KE' },
+    ZAR: { symbol: 'R',  code: 'ZAR', locale: 'en-ZA' },
+  };
   const [reportProductFilter, setReportProductFilter] = useState('');
   const [reportViewMode, setReportViewMode] = useState('summary'); // summary, detailed
   const [expandedProductId, setExpandedProductId] = useState(null);
@@ -248,15 +261,19 @@ const InventorySystem = ({ onLogout }) => {
   };
 
   // Reporting helpers
-  const formatCurrencyNaira = (value) => {
+  const formatCurrency = (value) => {
     const num = Number(value || 0);
-    if (!Number.isFinite(num)) return '₦0.00';
-    return `₦${num.toLocaleString('en-NG', {
+    if (!Number.isFinite(num)) return `${currencyOptions[currency].symbol}0.00`;
+    return num.toLocaleString(currencyOptions[currency].locale, {
+      style: 'currency',
+      currency: currencyOptions[currency].code,
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
-    })}`;
+    });
   };
-
+  
+  // Keep this as an alias so existing calls to formatCurrencyNaira still work
+  const formatCurrencyNaira = formatCurrency;
   
   const formatReportDate = (value) => {
     if (!value) return '—';
@@ -285,6 +302,11 @@ const InventorySystem = ({ onLogout }) => {
     localStorage.setItem('savedCategories', JSON.stringify(savedCategories));
   }, [savedCategories]);
   
+
+  useEffect(() => {
+    localStorage.setItem('currency', currency);
+  }, [currency]);
+
   useEffect(() => {
     localStorage.setItem('savedProductTemplates', JSON.stringify(savedProductTemplates));
   }, [savedProductTemplates]);
@@ -1969,7 +1991,7 @@ const InventorySystem = ({ onLogout }) => {
     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
       <div>
         <h2 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>Inventory Management</h2>
-        <p className="text-sm text-[#64748B] mt-1">{inventory.length} products • ${calculateStats().totalRevenue.toFixed(0)} revenue</p>
+        <p className="text-sm text-[#64748B] mt-1">{inventory.length} products • {formatCurrency(calculateStats().totalRevenue)} revenue</p>
       </div>
       <div className="flex gap-2">
         {userRole === 'admin' && (
@@ -2080,7 +2102,7 @@ const InventorySystem = ({ onLogout }) => {
       <span className={`text-xs font-bold uppercase tracking-widest ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Total Revenue</span>
     </div>
     <span className="text-lg font-bold text-[#2FB7A1]">
-      ${calculateStats().totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+    {formatCurrency(calculateStats().totalRevenue)}
     </span>
   </div>
 </div>
