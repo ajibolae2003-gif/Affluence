@@ -1858,6 +1858,24 @@ const InventorySystem = ({ onLogout }) => {
               <option value="admin" className="text-[#0F172A] dark:text-white">Admin</option>
               <option value="staff" className="text-[#0F172A] dark:text-white">Staff</option>
             </select>
+
+            {/* Currency selector in header */}
+          <select
+            value={currency}
+            onChange={(e) => setCurrency(e.target.value)}
+            className={`px-2 py-1.5 rounded-lg text-xs font-medium focus:ring-2 focus:ring-[#2FB7A1] focus:outline-none border ${
+              darkMode
+                ? 'bg-white/10 border-white/20 text-white'
+                : 'bg-white/50 border-[#CBD5E1] text-[#1E293B]'
+            }`}
+          >
+            {Object.entries(currencyOptions).map(([code, opt]) => (
+              <option key={code} value={code} className="text-[#0F172A]">
+                {opt.symbol} {code}
+              </option>
+            ))}
+          </select>
+
             <div className="relative">
               <button onClick={() => setShowNotifications(!showNotifications)} className={`relative p-2 rounded-lg transition ${darkMode ? 'bg-white/10 hover:bg-white/20 text-white' : 'bg-white/50 hover:bg-[#CBD5E1] text-[#1E293B]'}`}>
                 <Bell size={20} />
