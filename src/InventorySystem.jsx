@@ -5048,7 +5048,7 @@ const InventorySystem = ({ onLogout }) => {
   );
 })()}
 
-({activeReportTab === 'sales' && (
+{activeReportTab === 'sales' && (
   <div>
     {/* Summary Cards */}
     {salesReportData && (() => {
