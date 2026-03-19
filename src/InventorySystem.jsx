@@ -4208,15 +4208,15 @@ const InventorySystem = ({ onLogout }) => {
                 
                 {/* Report Sub-Tabs Navigation */}
                 <div className="mb-6">
-                  <div className="overflow-x-auto -mx-4 px-4">
-                    <div className="flex gap-1 min-w-max border-b border-[#E3E8EF] dark:border-[#2A2A2A]">
+                  <div className="overflow-x-auto -mx-4 px-4 scrollbar-hide">
+                    <div className="flex gap-0 min-w-max border-b border-[#E3E8EF] dark:border-[#2A2A2A]">
                       {[
-                        { id: 'customer',      label: 'Customers' },
-                        { id: 'inventory',     label: 'Inventory' },
-                        { id: 'sales',         label: 'Sales' },
-                        { id: 'profit',        label: 'Profit & Loss' },
-                        { id: 'stockMovement', label: 'Stock' },
-                        { id: 'priceLog',      label: 'Price Log' },
+                        { id: 'customer',      label: 'Customers',  short: 'Customers' },
+                        { id: 'inventory',     label: 'Inventory',  short: 'Inventory' },
+                        { id: 'sales',         label: 'Sales',      short: 'Sales'     },
+                        { id: 'profit',        label: 'Profit & Loss', short: 'P&L'    },
+                        { id: 'stockMovement', label: 'Stock',      short: 'Stock'     },
+                        { id: 'priceLog',      label: 'Price Log',  short: 'Prices'    },
                       ].map((tab) => (
                         <button
                           key={tab.id}
@@ -4227,7 +4227,8 @@ const InventorySystem = ({ onLogout }) => {
                               : 'border-transparent text-[#64748B] hover:text-[#0F172A] dark:hover:text-white'
                           }`}
                         >
-                          {tab.label}
+                          <span className="hidden sm:inline">{tab.label}</span>
+                          <span className="sm:hidden">{tab.short}</span>
                         </button>
                       ))}
                     </div>
