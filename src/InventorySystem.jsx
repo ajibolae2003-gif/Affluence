@@ -1212,7 +1212,7 @@ const InventorySystem = ({ onLogout }) => {
       const red = [220, 38, 38];
       const altRow = [248, 250, 252];
   
-      const fmt = (num) => `NGN ${Number(num || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      const fmt = (num) => formatCurrency(num);
       const PAGE_W = 297;
       const PAGE_H = 210;
       const MARGIN = 14;
@@ -1371,8 +1371,8 @@ const InventorySystem = ({ onLogout }) => {
             doc.setFont('helvetica', 'normal');
             doc.text(String(batch?.id || '-').substring(0, 18), bX[0], y + 3.8);
             doc.text(String(batch?.dateAdded || '-'), bX[1], y + 3.8);
-            doc.text(`NGN ${Number(batch?.costPrice || 0).toFixed(2)}`, bX[2], y + 3.8);
-            doc.text(`NGN ${Number(batch?.sellingPrice || 0).toFixed(2)}`, bX[3], y + 3.8);
+            doc.text(fmt(batch?.costPrice || 0), bX[2], y + 3.8);
+            doc.text(fmt(batch?.sellingPrice || 0), bX[3], y + 3.8);
             doc.text(String(batchData.totalSold || 0), bX[4], y + 3.8);
             doc.text(fmt(batchData.totalRevenue), bX[5], y + 3.8);
             doc.text(fmt(batchData.totalCost), bX[6], y + 3.8);
@@ -1546,8 +1546,8 @@ const InventorySystem = ({ onLogout }) => {
             doc.text(product.product.name.substring(0, 16), tX[3] + 1, y + 3.8);
             doc.text(String(batchData.batch?.id || '-').substring(0, 16), tX[4] + 1, y + 3.8);
             doc.text(String(sale.quantitySold || sale.quantity_sold || 0), tX[5] + 1, y + 3.8);
-            doc.text(`NGN ${Number(sale.sellingPriceUsed || sale.selling_price_used || 0).toFixed(2)}`, tX[6] + 1, y + 3.8);
-            doc.text(`NGN ${Number(sale.costPriceUsed || sale.cost_price_used || 0).toFixed(2)}`, tX[7] + 1, y + 3.8);
+            doc.text(fmt(sale.sellingPriceUsed || sale.selling_price_used || 0), tX[6] + 1, y + 3.8);
+            doc.text(fmt(sale.costPriceUsed || sale.cost_price_used || 0), tX[7] + 1, y + 3.8);
             doc.text(fmt(sale.revenue), tX[8] + 1, y + 3.8);
             doc.setTextColor(...(tp ? green : red));
             doc.setFont('helvetica', 'bold');
@@ -2504,7 +2504,7 @@ const InventorySystem = ({ onLogout }) => {
                 {[
                   { label: 'Stock', value: item.quantity ?? 0, color: isOut || isCritical ? '#EF4444' : isLow ? '#F59E0B' : undefined },
                   { label: 'Sold', value: item.sold ?? 0, color: '#2FB7A1' },
-                  { label: 'Price', value: `$${formatCurrency(item.price)}` },
+                  { label: 'Price', value: formatCurrency(item.price) },
                 ].map((stat, i) => (
                   <div
                     key={i}
@@ -2534,7 +2534,7 @@ const InventorySystem = ({ onLogout }) => {
                   </span>
                 </div>
                 <span className={`text-[11px] font-semibold flex-shrink-0 ${margin >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                  Margin ${margin.toFixed(0)}
+                  Margin {formatCurrency(margin)}
                 </span>
               </div>
 
@@ -4282,7 +4282,7 @@ const InventorySystem = ({ onLogout }) => {
                           { label: 'Total Customers', value: customerReportData.length },
                           { label: 'Total Revenue', value: formatCurrencyNaira(customerReportData.reduce((s,c)=>s+c.totalSpent,0)) },
                           { label: 'Total Packs Purchased', value: customerReportData.reduce((s,c)=>s+c.totalQuantity,0) },
-                          { label: 'Avg Order Value', value: (() => { const tot = customerReportData.reduce((s,c)=>s+c.totalOrders,0); return tot ? formatCurrencyNaira(customerReportData.reduce((s,c)=>s+c.totalSpent,0)/tot) : '₦0.00'; })() },
+                          { label: 'Avg Order Value', value: (() => { const tot = customerReportData.reduce((s,c)=>s+c.totalOrders,0); return tot ? formatCurrencyNaira(customerReportData.reduce((s,c)=>s+c.totalSpent,0)/tot) : formatCurrencyNaira(0); })() },
                         ].map((card,i) => (
                           <div key={i} className={`rounded-xl shadow-sm border p-6 ${darkMode ? 'bg-[#1A1A1A] border-[#2A2A2A]' : 'bg-white border-[#E3E8EF]'}`}>
                             <p className={`text-sm mb-2 ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>{card.label}</p>
