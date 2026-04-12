@@ -119,6 +119,19 @@ const InventorySystem = ({ onLogout }) => {
   const [loading, setLoading] = useState(false);
   const [verificationData, setVerificationData] = useState(null);
   const [showVerification, setShowVerification] = useState(false);
+  const [expandedProductIds, setExpandedProductIds] = useState(new Set());
+
+const toggleProductExpand = (productId) => {
+  setExpandedProductIds(prev => {
+    const next = new Set(prev);
+    if (next.has(productId)) {
+      next.delete(productId);
+    } else {
+      next.add(productId);
+    }
+    return next;
+  });
+};
   const [productSearchQuery, setProductSearchQuery] = useState('');
   const [selectedProductOrders, setSelectedProductOrders] = useState([]);
   const [productSearchResults, setProductSearchResults] = useState([]);
