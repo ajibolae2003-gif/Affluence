@@ -5329,8 +5329,8 @@ const toggleProductExpand = (productId) => {
                                         const batchCost    = batch?.costPrice || 0;
                                         const qtySold      = batchData.totalSold || 0;
 
-                                        // Revenue = current selling price × qty sold (FIFO pricing)
-                                        const revenue = currentPrice * qtySold;
+                                        // Revenue = sum of actual per-sale revenue (uses the selling price at time of sale)
+                                        const revenue = (batchData.sales || []).reduce((s, sale) => s + (sale.revenue || (sale.sellingPriceUsed || currentPrice) * (sale.quantitySold || 0)), 0) || currentPrice * qtySold;
                                         // COGS = original batch cost × qty sold
                                         const cogs = batchCost * qtySold;
                                         // Gross Profit = Revenue - COGS
@@ -5365,10 +5365,20 @@ const toggleProductExpand = (productId) => {
                                                 {formatCurrencyNaira(batchCost)}
                                               </td>
 
-                                              {/* Current selling price */}
-                                              <td className={`px-3 py-2.5 text-right tabular-nums font-semibold ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>
-                                                {formatCurrencyNaira(currentPrice)}
-                                              </td>
+                                              {/* Selling price used — per-batch weighted average from actual sales */}
+                                                <td className={`px-3 py-2.5 text-right tabular-nums font-semibold ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>
+                                                  {(() => {
+                                                    const sales = batchData.sales || [];
+                                                    if (sales.length === 0) return formatCurrencyNaira(currentPrice);
+                                                    const prices = [...new Set(sales.map(s => s.sellingPriceUsed || s.selling_price_used || currentPrice))];
+                                                    if (prices.length === 1) return formatCurrencyNaira(prices[0]);
+                                                    return (
+                                                      <span title={prices.map(p => formatCurrencyNaira(p)).join(', ')}>
+                                                        {formatCurrencyNaira(Math.min(...prices))} – {formatCurrencyNaira(Math.max(...prices))}
+                                                      </span>
+                                                    );
+                                                  })()}
+                                                </td>
 
                                               {/* Qty Sold */}
                                               <td className={`px-3 py-2.5 text-right tabular-nums ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>{qtySold}</td>
