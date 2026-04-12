@@ -5441,7 +5441,7 @@ const toggleProductExpand = (productId) => {
             const currentPrice = invProduct?.price || 0;
 
             return (
-              <div key={product.product.id}>toggleProductExpand(product.product.id, product.batches);
+              <div key={product.product.id}>
                 <div
                   onClick={() => {
                     const willExpand = !expandedProductIds.has(product.product.id);
