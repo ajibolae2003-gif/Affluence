@@ -5428,7 +5428,7 @@ const toggleProductExpand = (productId) => {
         <div className="md:hidden divide-y divide-[#F1F5F9] dark:divide-[#1f2937]">
           {salesReportData.products.map((product) => {
             const margin     = product.totalRevenue > 0 ? ((product.totalProfit / product.totalRevenue) * 100) : 0;
-            const isExpanded = expandedProductId === product.product.id;
+            const isExpanded = expandedProductIds.has(product.product.id);
             const invProduct = inventory.find(p => p.id === product.product.id);
             const currentPrice = invProduct?.price || 0;
 
