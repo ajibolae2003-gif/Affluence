@@ -5203,7 +5203,7 @@ const toggleProductExpand = (productId) => {
             <tbody>
               {salesReportData.products.map((product) => {
                 const margin      = product.totalRevenue > 0 ? ((product.totalProfit / product.totalRevenue) * 100) : 0;
-                const isExpanded  = expandedProductId === product.product.id;
+                const isExpanded = expandedProductIds.has(product.product.id);
                 // Current selling price from inventory
                 const invProduct  = inventory.find(p => p.id === product.product.id);
                 const currentPrice = invProduct?.price || 0;
@@ -5444,8 +5444,11 @@ const toggleProductExpand = (productId) => {
               <div key={product.product.id}>toggleProductExpand(product.product.id, product.batches);
                 <div
                   onClick={() => {
-                    setExpandedProductId(isExpanded ? null : product.product.id);
-                    if (!isExpanded) product.batches?.forEach(b => b.batch?.id && fetchPriceHistory(b.batch.id));
+                    const willExpand = !expandedProductIds.has(product.product.id);
+                    toggleProductExpand(product.product.id);
+                    if (willExpand) {
+                      product.batches?.forEach(b => b.batch?.id && fetchPriceHistory(b.batch.id));
+                    }
                   }}
                   className={`p-4 cursor-pointer transition ${isExpanded ? (darkMode ? 'bg-[#2FB7A1]/5' : 'bg-[#2FB7A1]/3') : (darkMode ? 'hover:bg-[#111827]' : 'hover:bg-[#F8FAFC]')}`}>
                   <div className="flex items-center justify-between mb-3">
