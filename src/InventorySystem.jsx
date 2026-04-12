@@ -882,7 +882,6 @@ const toggleProductExpand = (productId) => {
       });
       
       if (result.ok) {
-        // Store category for this product
         if (formData.category) {
           setProductCategories(prev => ({
             ...prev,
@@ -890,6 +889,20 @@ const toggleProductExpand = (productId) => {
           }));
         }
         await fetchInventory();
+        // If the product already existed in inventory, update its local state
+        // so the price column reflects the new batch's selling price immediately
+        setInventory(prev => prev.map(item => {
+          if (item.id === formData.productId) {
+            const newPrice = parseCommaNumber(formData.price);
+            const addedQty = parseInt(formData.quantity) || 0;
+            return {
+              ...item,
+              price: newPrice > 0 ? newPrice : item.price,
+              quantity: (item.quantity || 0) + addedQty,
+            };
+          }
+          return item;
+        }));
         setShowModal(false);
         showToast('Product and batch added successfully!');
       } else {
