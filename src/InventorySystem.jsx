@@ -6265,8 +6265,10 @@ const toggleProductExpand = (productId) => {
               showToast('Please enter a batch ID.');
               return;
             }
-            if (!data.dateReceived || data.dateReceived === '') {
-              showToast('Please enter a complete date in the format DD-MMM-YYYY (e.g. 05-Mar-2026).');
+            const hiddenDate = document.getElementById('dateReceived-hidden')?.value;
+            data.dateReceived = hiddenDate || '';
+            if (!data.dateReceived) {
+              showToast('Please select a date.');
               return;
             }
             const hiddenQtyEl = e.target.querySelector('input[name="quantity"]');
@@ -6641,44 +6643,35 @@ const toggleProductExpand = (productId) => {
 
   {/* ── Date Added + Batch ID ── */}
   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-    <div>
-      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-        Date Added <span className="text-red-500">*</span>
-      </label>
-      <input
-        name="dateReceivedss"
-        type="text"
-        placeholder="e.g. 05-Mar-2026"
-        className={`w-full px-4 py-3 border rounded-lg transition-all ${
-          darkMode
-            ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white placeholder-gray-500 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
-            : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
-        }`}
-        required
-      />
-      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-        Format: DD-MMM-YYYY (e.g. 05-Mar-2026)
-      </p>
-    </div>
-
-    <div>
-      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-        Batch ID <span className="text-red-500">*</span>
-      </label>
-      <input
-        name="batchId"
-        placeholder="e.g., BATCH-001"
-        className={`w-full px-4 py-3 border rounded-lg transition-all ${
-          darkMode
-            ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white placeholder-gray-400 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
-            : 'bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
-        }`}
-        required
-      />
-      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-        Unique identifier for this stock batch
-      </p>
-    </div>
+  <div>
+  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+    Date Added <span className="text-red-500">*</span>
+  </label>
+  {/* Hidden field holds the DD-MMM-YYYY value the backend expects */}
+  <input type="hidden" name="dateReceived" id="dateReceived-hidden" />
+  <input
+    type="date"
+    id="dateReceived-picker"
+    max={new Date().toISOString().split('T')[0]}
+    onChange={(e) => {
+      const val = e.target.value; // YYYY-MM-DD
+      if (!val) return;
+      const d = new Date(val + 'T00:00:00');
+      const formatted = d.toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+      }).replace(/ /g, '-'); // "05-Mar-2026"
+      document.getElementById('dateReceived-hidden').value = formatted;
+    }}
+    className={`w-full px-4 py-3 border rounded-lg transition-all ${
+      darkMode
+        ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
+        : 'bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
+    }`}
+    required
+  />
+</div>
   </div>
 
   {/* ── Description ── */}
