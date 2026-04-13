@@ -5109,40 +5109,34 @@ const toggleProductExpand = (productId) => {
     {salesReportData && (
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
         {(() => {
-          // Recalculate summary using correct FIFO logic
           let totalRevenue = 0;
           let totalCOGS = 0;
           let totalShipping = 0;
 
           (salesReportData.products || []).forEach(product => {
-            const invProduct = inventory.find(p => p.id === product.product?.id);
-            const currentPrice = invProduct?.price || 0;
             (product.batches || []).forEach(batchData => {
-              const qtySold = batchData.totalSold || 0;
-              const batchCost = batchData.batch?.costPrice || 0;
-              totalRevenue += currentPrice * qtySold;
-              totalCOGS += batchCost * qtySold;
               (batchData.sales || []).forEach(sale => {
+                totalRevenue += sale.revenue || 0;
+                totalCOGS += (sale.costPriceUsed || 0) * (sale.quantitySold || 0);
                 const matchedOrder = orders.find(o => o.id === (sale.orderId || sale.order_id));
                 totalShipping += parseFloat(matchedOrder?.shipping?.shippingCost || 0);
               });
             });
           });
 
-          const totalGrossProfit = totalRevenue - totalCOGS;
-          const totalNetProfit = totalGrossProfit - totalShipping;
+          const totalNetProfit = totalRevenue - totalCOGS - totalShipping;
           const totalUnitsSold = (salesReportData.products || []).reduce((s, p) =>
             s + (p.batches || []).reduce((bs, b) => bs + (b.totalSold || 0), 0), 0);
 
           return [
-            { label: 'Total Revenue',      value: formatCurrencyNaira(totalRevenue) },
-            { label: 'Total COGS (FIFO)',   value: formatCurrencyNaira(totalCOGS) },
-            { label: 'Total Shipping',      value: formatCurrencyNaira(totalShipping) },
-            { label: 'Net Profit',          value: formatCurrencyNaira(totalNetProfit),
+            { label: 'Total Revenue',  value: formatCurrency(totalRevenue) },
+            { label: 'Total COGS',     value: formatCurrency(totalCOGS) },
+            { label: 'Total Shipping', value: formatCurrency(totalShipping) },
+            { label: 'Net Profit',     value: formatCurrency(totalNetProfit),
               color: totalNetProfit >= 0 ? 'text-emerald-500' : 'text-red-500' },
-            { label: 'Units Sold',          value: totalUnitsSold.toLocaleString(), fullWidth: true },
+            { label: 'Units Sold',     value: totalUnitsSold.toLocaleString() },
           ].map((card, i) => (
-            <div key={i} className={`rounded-xl border p-4 ${card.fullWidth ? 'col-span-2 md:col-span-1' : ''} ${darkMode ? 'bg-[#1A1A1A] border-[#2A2A2A]' : 'bg-white border-[#E3E8EF]'}`}>
+            <div key={i} className={`rounded-xl border p-4 ${darkMode ? 'bg-[#1A1A1A] border-[#2A2A2A]' : 'bg-white border-[#E3E8EF]'}`}>
               <p className={`text-xs mb-1 leading-tight ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>{card.label}</p>
               <p className={`text-lg md:text-2xl font-semibold leading-tight ${card.color || (darkMode ? 'text-white' : 'text-[#0F172A]')}`}>{card.value}</p>
             </div>
@@ -5172,524 +5166,271 @@ const toggleProductExpand = (productId) => {
             {inventory.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
           </select>
         </div>
-        <div>
-          <label className={`block text-xs font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>View</label>
-          <select value={reportViewMode} onChange={e => setReportViewMode(e.target.value)}
-            className={`w-full px-3 py-2 rounded-lg text-sm border focus:ring-2 focus:ring-[#2FB7A1] ${darkMode ? 'bg-[#111827] border-[#1f2937] text-white' : 'bg-white border-[#E5E7EB] text-[#0F172A]'}`}>
-            <option value="summary">Summary</option>
-            <option value="detailed">Detailed</option>
-          </select>
+        <div className="flex items-end">
+          <button onClick={exportSalesReportPDF} disabled={!salesReportData}
+            className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 bg-[#2FB7A1] text-white rounded-lg text-sm font-medium hover:bg-[#28a085] disabled:opacity-50 transition shadow-sm">
+            Export PDF
+          </button>
         </div>
-      </div>
-      <div className="mt-3 flex justify-end">
-        <button onClick={exportSalesReportPDF} disabled={!salesReportData}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-[#2FB7A1] text-white rounded-lg text-sm font-medium hover:bg-[#28a085] disabled:opacity-50 transition shadow-sm">
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
-            <line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/>
-          </svg>
-          Export PDF
-        </button>
       </div>
     </div>
 
-    {/* Product Breakdown Table */}
+    {/* Sales Table */}
     {loadingSalesReport ? (
       <div className={`rounded-xl border p-8 text-center ${darkMode ? 'bg-[#1A1A1A] border-[#2A2A2A]' : 'bg-white border-[#E3E8EF]'}`}>
         <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>Loading sales report...</p>
       </div>
     ) : salesReportData && salesReportData.products ? (
-      <div className={`rounded-xl border overflow-hidden mb-6 ${darkMode ? 'bg-[#1A1A1A] border-[#2A2A2A]' : 'bg-white border-[#E3E8EF]'}`}>
-
-        {/* ── Desktop Table ── */}
-        <div className="hidden md:block overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className={`${darkMode ? 'bg-[#0d1117]' : 'bg-[#F9FAFB]'}`}>
-                {['Product', 'Units Sold', 'Sell Price', 'Revenue', 'COGS (FIFO)', 'Gross Profit', 'Shipping', 'Net Profit', 'Actions'].map((h, i) => (
-                  <th key={i} className={`px-4 py-3 text-[10px] font-bold uppercase tracking-wide border-b text-left ${darkMode ? 'text-gray-500 border-[#1f2937]' : 'text-[#94A3B8] border-[#E3E8EF]'} ${i >= 1 && i <= 7 ? 'text-right' : ''}`}>
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {salesReportData.products.map((product) => {
-                const invProduct  = inventory.find(p => p.id === product.product.id);
-                const currentPrice = invProduct?.price || 0;
-                const isExpanded  = expandedProductIds.has(product.product.id);
-
-                // Recalculate product totals using correct FIFO logic
-                let prodRevenue  = 0;
-                let prodCOGS     = 0;
-                let prodShipping = 0;
-                let prodQtySold  = 0;
-
-                (product.batches || []).forEach(batchData => {
-                  const qty      = batchData.totalSold || 0;
-                  const cost     = batchData.batch?.costPrice || 0;
-                  prodQtySold   += qty;
-                  prodRevenue   += currentPrice * qty;
-                  prodCOGS      += cost * qty;
-                  (batchData.sales || []).forEach(sale => {
-                    const o = orders.find(ord => ord.id === (sale.orderId || sale.order_id));
-                    prodShipping += parseFloat(o?.shipping?.shippingCost || 0);
-                  });
-                });
-
-                const prodGrossProfit = prodRevenue - prodCOGS;
-                const prodNetProfit   = prodGrossProfit - prodShipping;
-                const margin          = prodRevenue > 0 ? ((prodGrossProfit / prodRevenue) * 100) : 0;
-
-                return (
-                  <React.Fragment key={product.product.id}>
-                    {/* Product summary row */}
-                    <tr
-                      className={`border-b transition cursor-pointer ${isExpanded ? (darkMode ? 'bg-[#0d1117]' : 'bg-[#F0FDF9]') : (darkMode ? 'border-[#1f2937] hover:bg-[#111827]' : 'border-[#F1F5F9] hover:bg-[#F8FAFC]')}`}
-                      onClick={() => {
-                        const willExpand = !expandedProductIds.has(product.product.id);
-                        toggleProductExpand(product.product.id);
-                        if (willExpand) {
-                          product.batches?.forEach(b => b.batch?.id && fetchPriceHistory(b.batch.id));
-                        }
-                      }}>
-                      {/* Product name */}
-                      <td className={`px-4 py-3 font-semibold ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>
-                        <div className="flex items-center gap-2">
-                          <ChevronRight size={14} className={`text-[#2FB7A1] transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
-                          {product.product.name}
-                        </div>
-                      </td>
-                      <td className={`px-4 py-3 text-right tabular-nums ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>{prodQtySold}</td>
-                      <td className={`px-4 py-3 text-right tabular-nums ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>{formatCurrencyNaira(currentPrice)}</td>
-                      <td className={`px-4 py-3 text-right tabular-nums ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>{formatCurrencyNaira(prodRevenue)}</td>
-                      <td className={`px-4 py-3 text-right tabular-nums ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>{formatCurrencyNaira(prodCOGS)}</td>
-                      <td className={`px-4 py-3 text-right tabular-nums font-semibold ${prodGrossProfit >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                        {formatCurrencyNaira(prodGrossProfit)}
-                      </td>
-                      <td className={`px-4 py-3 text-right tabular-nums ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>{formatCurrencyNaira(prodShipping)}</td>
-                      <td className={`px-4 py-3 text-right tabular-nums font-bold ${prodNetProfit >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                        {formatCurrencyNaira(prodNetProfit)}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const willExpand = !expandedProductIds.has(product.product.id);
-                            toggleProductExpand(product.product.id);
-                            if (willExpand) {
-                              product.batches?.forEach(b => b.batch?.id && fetchPriceHistory(b.batch.id));
-                            }
-                          }}
-                          className="text-[#2FB7A1] hover:underline text-xs">
-                          {isExpanded ? 'Hide' : 'View'} Details
-                        </button>
-                      </td>
-                    </tr>
-
-                    {/* Expanded batch breakdown */}
-                    {isExpanded && (
-                      <tr>
-                        <td colSpan="9" className={`px-4 py-6 ${darkMode ? 'bg-[#020617]' : 'bg-[#F9FAFB]'}`}>
-                          <div className="space-y-6">
-
-                            {/* FIFO Batch Table */}
-                            <div>
-                              <h4 className={`font-semibold mb-3 text-sm ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>
-                                FIFO Batch Breakdown
-                                <span className={`ml-2 text-xs font-normal ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>
-                                  — Revenue = Qty Sold × Current Price · COGS = Qty Sold × Original Batch Cost · Shipping = sum of actual order shipping costs
-                                </span>
-                              </h4>
-                              <div className="overflow-x-auto">
-                                <table className="w-full text-sm">
-                                  <thead>
-                                    <tr className={`border-b ${darkMode ? 'border-[#1f2937]' : 'border-[#E3E8EF]'}`}>
-                                      {['Batch ID', 'Date Added', 'Cost/Unit', 'Sell Price/Unit', 'Qty Sold', 'Revenue', 'COGS', 'Gross Profit', 'Shipping', 'Net Profit'].map((h, i) => (
-                                        <th key={i} className={`px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wide ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'} ${i >= 4 ? 'text-right' : ''}`}>{h}</th>
-                                      ))}
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {product.batches && product.batches.length > 0 ? (
-                                      product.batches.map((batchData, idx) => {
-                                        const batch        = batchData.batch;
-                                        const isExpB       = expandedBatchId === batch?.id;
-                                        const batchCost    = batch?.costPrice || 0;
-                                        const qtySold      = batchData.totalSold || 0;
-
-                                        // Revenue = sum of actual per-sale revenue (uses the selling price at time of sale)
-                                        const revenue = (batchData.sales || []).reduce((s, sale) => s + (sale.revenue || (sale.sellingPriceUsed || currentPrice) * (sale.quantitySold || 0)), 0) || currentPrice * qtySold;
-                                        // COGS = original batch cost × qty sold
-                                        const cogs = batchCost * qtySold;
-                                        // Gross Profit = Revenue - COGS
-                                        const grossProfit = revenue - cogs;
-                                        // Shipping = sum of actual shipping costs from each order in this batch
-                                        const batchShipping = (batchData.sales || []).reduce((s, sale) => {
-                                          const matchedOrder = orders.find(o => o.id === (sale.orderId || sale.order_id));
-                                          return s + parseFloat(matchedOrder?.shipping?.shippingCost || 0);
-                                        }, 0);
-                                        // Net Profit = Gross Profit - Shipping
-                                        const netProfit = grossProfit - batchShipping;
-
-                                        return (
-                                          <React.Fragment key={idx}>
-                                            <tr
-                                              onClick={() => fetchBatchTransactions(batch?.id, product.product.id)}
-                                              className={`border-b transition cursor-pointer ${isExpB ? (darkMode ? 'bg-[#2FB7A1]/10' : 'bg-[#2FB7A1]/5') : (darkMode ? 'hover:bg-[#1f2937]' : 'hover:bg-[#F8FAFC]')} ${darkMode ? 'border-[#1f2937]' : 'border-[#F1F5F9]'}`}>
-
-                                              {/* Batch ID */}
-                                              <td className={`px-3 py-2.5 font-medium ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>
-                                                <div className="flex items-center gap-2">
-                                                  <ChevronRight size={12} className={`text-[#2FB7A1] flex-shrink-0 transition-transform ${isExpB ? 'rotate-90' : ''}`} />
-                                                  <span className="font-mono text-xs">{batch?.id || '—'}</span>
-                                                </div>
-                                              </td>
-
-                                              {/* Date Added */}
-                                              <td className={`px-3 py-2.5 ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>{batch?.dateAdded || '—'}</td>
-
-                                              {/* Original batch cost per unit */}
-                                              <td className={`px-3 py-2.5 text-right tabular-nums ${darkMode ? 'text-gray-300' : 'text-[#64748B]'}`}>
-                                                {formatCurrencyNaira(batchCost)}
-                                              </td>
-
-                                              {/* Selling price used — per-batch weighted average from actual sales */}
-                                                <td className={`px-3 py-2.5 text-right tabular-nums font-semibold ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>
-                                                  {(() => {
-                                                    const sales = batchData.sales || [];
-                                                    if (sales.length === 0) return formatCurrencyNaira(currentPrice);
-                                                    const prices = [...new Set(sales.map(s => s.sellingPriceUsed || s.selling_price_used || currentPrice))];
-                                                    if (prices.length === 1) return formatCurrencyNaira(prices[0]);
-                                                    return (
-                                                      <span title={prices.map(p => formatCurrencyNaira(p)).join(', ')}>
-                                                        {formatCurrencyNaira(Math.min(...prices))} – {formatCurrencyNaira(Math.max(...prices))}
-                                                      </span>
-                                                    );
-                                                  })()}
-                                                </td>
-
-                                              {/* Qty Sold */}
-                                              <td className={`px-3 py-2.5 text-right tabular-nums ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>{qtySold}</td>
-
-                                              {/* Revenue = currentPrice × qtySold */}
-                                              <td className={`px-3 py-2.5 text-right tabular-nums ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>
-                                                {formatCurrencyNaira(revenue)}
-                                              </td>
-
-                                              {/* COGS = batchCost × qtySold */}
-                                              <td className={`px-3 py-2.5 text-right tabular-nums ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>
-                                                {formatCurrencyNaira(cogs)}
-                                              </td>
-
-                                              {/* Gross Profit */}
-                                              <td className={`px-3 py-2.5 text-right tabular-nums font-semibold ${grossProfit >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                                                {formatCurrencyNaira(grossProfit)}
-                                              </td>
-
-                                              {/* Shipping = sum of all order shipping costs in this batch */}
-                                              <td className={`px-3 py-2.5 text-right tabular-nums ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>
-                                                {formatCurrencyNaira(batchShipping)}
-                                              </td>
-
-                                              {/* Net Profit = Gross Profit - Shipping */}
-                                              <td className={`px-3 py-2.5 text-right tabular-nums font-bold ${netProfit >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                                                {formatCurrencyNaira(netProfit)}
-                                                <span className={`block text-[10px] font-normal ${darkMode ? 'text-gray-600' : 'text-[#94A3B8]'}`}>after shipping</span>
-                                              </td>
-                                            </tr>
-
-                                            {/* Batch transactions drill-down */}
-                                            {isExpB && (
-                                              <tr>
-                                                <td colSpan="10" className={`px-4 py-4 ${darkMode ? 'bg-[#0d1117]' : 'bg-[#F8FAFC]'}`}>
-                                                  {loadingBatchTransactions ? (
-                                                    <p className="text-center text-sm text-[#64748B] py-4">Loading transactions...</p>
-                                                  ) : batchTransactions.length === 0 ? (
-                                                    <p className="text-center text-sm text-[#64748B] py-4">No transactions found for this batch.</p>
-                                                  ) : (
-                                                    <div>
-                                                      <p className={`text-xs font-bold uppercase tracking-wide mb-3 ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>
-                                                        {batchTransactions.length} Transaction{batchTransactions.length !== 1 ? 's' : ''} — Batch {batch?.id}
-                                                      </p>
-                                                      <table className="w-full text-xs">
-                                                        <thead>
-                                                          <tr className={`border-b ${darkMode ? 'border-[#1f2937]' : 'border-[#E3E8EF]'}`}>
-                                                            {['Order ID', 'Customer', 'Date', 'Qty', 'Sell Price', 'Revenue', 'COGS', 'Shipping', 'Net Profit', 'Status'].map((h, i) => (
-                                                              <th key={i} className={`px-2 py-2 text-left font-semibold ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'} ${i >= 3 ? 'text-right' : ''}`}>{h}</th>
-                                                            ))}
-                                                          </tr>
-                                                        </thead>
-                                                        <tbody>
-                                                          {batchTransactions.map((txn, tIdx) => {
-                                                            const txnQty      = txn.quantity || 0;
-                                                            const txnRevenue  = currentPrice * txnQty;
-                                                            const txnCOGS     = batchCost * txnQty;
-                                                            const txnShipping = parseFloat(txn.shipping?.shippingCost || 0);
-                                                            const txnGross    = txnRevenue - txnCOGS;
-                                                            const txnNet      = txnGross - txnShipping;
-                                                            const ship        = txn.shipping || {};
-
-                                                            return (
-                                                              <tr key={txn.id || tIdx}
-                                                                onClick={() => setSelectedOrder(txn)}
-                                                                className={`border-b cursor-pointer transition ${darkMode ? 'border-[#1f2937] hover:bg-[#111827]' : 'border-[#F1F5F9] hover:bg-white'}`}>
-                                                                <td className={`px-2 py-2 font-mono ${darkMode ? 'text-[#2FB7A1]' : 'text-[#2FB7A1]'}`}>{txn.id}</td>
-                                                                <td className={`px-2 py-2 font-medium ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>{txn.customerName}</td>
-                                                                <td className={`px-2 py-2 ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>{txn.dateCreated || '—'}</td>
-                                                                <td className={`px-2 py-2 text-right ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>{txnQty}</td>
-                                                                <td className={`px-2 py-2 text-right ${darkMode ? 'text-gray-300' : 'text-[#64748B]'}`}>{formatCurrencyNaira(currentPrice)}</td>
-                                                                <td className={`px-2 py-2 text-right font-semibold ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>{formatCurrencyNaira(txnRevenue)}</td>
-                                                                <td className={`px-2 py-2 text-right ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>{formatCurrencyNaira(txnCOGS)}</td>
-                                                                <td className={`px-2 py-2 text-right ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>{formatCurrencyNaira(txnShipping)}</td>
-                                                                <td className={`px-2 py-2 text-right font-bold ${txnNet >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>{formatCurrencyNaira(txnNet)}</td>
-                                                                <td className="px-2 py-2 text-right">
-                                                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${ship.status === 'shipped' ? 'bg-emerald-100 text-emerald-700' : ship.status === 'transit' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'}`}>
-                                                                    {ship.status ? ship.status.charAt(0).toUpperCase() + ship.status.slice(1) : 'Pending'}
-                                                                  </span>
-                                                                </td>
-                                                              </tr>
-                                                            );
-                                                          })}
-                                                        </tbody>
-                                                        <tfoot>
-                                                          <tr className={`border-t font-bold ${darkMode ? 'border-[#1f2937]' : 'border-[#E3E8EF]'}`}>
-                                                            <td colSpan="3" className={`px-2 py-2 ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>Total ({batchTransactions.length})</td>
-                                                            <td className={`px-2 py-2 text-right ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>
-                                                              {batchTransactions.reduce((s, t) => s + (t.quantity || 0), 0)}
-                                                            </td>
-                                                            <td />
-                                                            <td className={`px-2 py-2 text-right ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>
-                                                              {formatCurrencyNaira(batchTransactions.reduce((s, t) => s + currentPrice * (t.quantity || 0), 0))}
-                                                            </td>
-                                                            <td className={`px-2 py-2 text-right ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>
-                                                              {formatCurrencyNaira(batchTransactions.reduce((s, t) => s + batchCost * (t.quantity || 0), 0))}
-                                                            </td>
-                                                            <td className={`px-2 py-2 text-right ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>
-                                                              {formatCurrencyNaira(batchTransactions.reduce((s, t) => s + parseFloat(t.shipping?.shippingCost || 0), 0))}
-                                                            </td>
-                                                            <td className={`px-2 py-2 text-right ${netProfit >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                                                              {formatCurrencyNaira(
-                                                                batchTransactions.reduce((s, t) => {
-                                                                  const r = currentPrice * (t.quantity || 0);
-                                                                  const c = batchCost * (t.quantity || 0);
-                                                                  const sh = parseFloat(t.shipping?.shippingCost || 0);
-                                                                  return s + (r - c - sh);
-                                                                }, 0)
-                                                              )}
-                                                            </td>
-                                                            <td />
-                                                          </tr>
-                                                        </tfoot>
-                                                      </table>
-                                                    </div>
-                                                  )}
-                                                </td>
-                                              </tr>
-                                            )}
-                                          </React.Fragment>
-                                        );
-                                      })
-                                    ) : (
-                                      <tr><td colSpan="10" className="px-3 py-4 text-center text-[#64748B]">No batch data available</td></tr>
-                                    )}
-                                  </tbody>
-                                  {/* Batch totals footer */}
-                                  <tfoot>
-                                    <tr className={`border-t-2 font-bold text-xs ${darkMode ? 'bg-[#0d1117] border-[#1f2937]' : 'bg-[#F9FAFB] border-[#E3E8EF]'}`}>
-                                      <td colSpan="4" className={`px-3 py-2.5 ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>
-                                        Product Total ({(product.batches || []).length} batches)
-                                      </td>
-                                      <td className={`px-3 py-2.5 text-right tabular-nums ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>{prodQtySold}</td>
-                                      <td className="px-3 py-2.5 text-right tabular-nums text-[#2FB7A1]">{formatCurrencyNaira(prodRevenue)}</td>
-                                      <td className={`px-3 py-2.5 text-right tabular-nums ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>{formatCurrencyNaira(prodCOGS)}</td>
-                                      <td className={`px-3 py-2.5 text-right tabular-nums ${prodGrossProfit >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>{formatCurrencyNaira(prodGrossProfit)}</td>
-                                      <td className={`px-3 py-2.5 text-right tabular-nums ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>{formatCurrencyNaira(prodShipping)}</td>
-                                      <td className={`px-3 py-2.5 text-right tabular-nums ${prodNetProfit >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>{formatCurrencyNaira(prodNetProfit)}</td>
-                                    </tr>
-                                  </tfoot>
-                                </table>
-                              </div>
-                            </div>
-
-                            {/* P&L mini summary */}
-                            <div className={`rounded-lg p-4 border ${darkMode ? 'bg-[#F9FAFB]/5 border-[#1f2937]' : 'bg-[#F9FAFB] border-[#E3E8EF]'}`}>
-                              <h4 className={`font-semibold mb-3 text-sm ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>Profit & Loss Overview</h4>
-                              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                                {[
-                                  { label: 'Revenue',       value: formatCurrencyNaira(prodRevenue) },
-                                  { label: 'COGS (FIFO)',   value: formatCurrencyNaira(prodCOGS) },
-                                  { label: 'Gross Profit',  value: formatCurrencyNaira(prodGrossProfit), color: prodGrossProfit >= 0 ? 'text-emerald-500' : 'text-red-500' },
-                                  { label: 'Shipping',      value: formatCurrencyNaira(prodShipping) },
-                                  { label: 'Net Profit',    value: formatCurrencyNaira(prodNetProfit),   color: prodNetProfit >= 0 ? 'text-emerald-500' : 'text-red-500' },
-                                ].map((item, i) => (
-                                  <div key={i}>
-                                    <p className={`text-xs mb-1 ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>{item.label}</p>
-                                    <p className={`text-lg font-semibold ${item.color || (darkMode ? 'text-white' : 'text-[#0F172A]')}`}>{item.value}</p>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </React.Fragment>
-                );
-              })}
-            </tbody>
-            {/* Grand total footer */}
-            {(() => {
-              let grandRevenue = 0, grandCOGS = 0, grandShipping = 0, grandQty = 0;
-              (salesReportData.products || []).forEach(product => {
-                const invProduct   = inventory.find(p => p.id === product.product.id);
-                const currentPrice = invProduct?.price || 0;
-                (product.batches || []).forEach(batchData => {
-                  const qty = batchData.totalSold || 0;
-                  grandQty      += qty;
-                  grandRevenue  += currentPrice * qty;
-                  grandCOGS     += (batchData.batch?.costPrice || 0) * qty;
-                  (batchData.sales || []).forEach(sale => {
-                    const o = orders.find(ord => ord.id === (sale.orderId || sale.order_id));
-                    grandShipping += parseFloat(o?.shipping?.shippingCost || 0);
-                  });
-                });
-              });
-              const grandGross  = grandRevenue - grandCOGS;
-              const grandNet    = grandGross - grandShipping;
-
-              return (
-                <tfoot>
-                  <tr className={`border-t-2 font-semibold text-sm ${darkMode ? 'bg-[#0d1117] border-[#1f2937]' : 'bg-[#F9FAFB] border-[#E3E8EF]'}`}>
-                    <td className={`px-4 py-3 ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>Grand Total</td>
-                    <td className={`px-4 py-3 text-right tabular-nums ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>{grandQty}</td>
-                    <td />
-                    <td className="px-4 py-3 text-right tabular-nums text-[#2FB7A1]">{formatCurrencyNaira(grandRevenue)}</td>
-                    <td className={`px-4 py-3 text-right tabular-nums ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>{formatCurrencyNaira(grandCOGS)}</td>
-                    <td className={`px-4 py-3 text-right tabular-nums ${grandGross >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>{formatCurrencyNaira(grandGross)}</td>
-                    <td className={`px-4 py-3 text-right tabular-nums ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>{formatCurrencyNaira(grandShipping)}</td>
-                    <td className={`px-4 py-3 text-right tabular-nums font-bold ${grandNet >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>{formatCurrencyNaira(grandNet)}</td>
-                    <td />
-                  </tr>
-                </tfoot>
-              );
-            })()}
-          </table>
-        </div>
-
-        {/* ── Mobile Cards ── */}
-        <div className="md:hidden divide-y divide-[#F1F5F9] dark:divide-[#1f2937]">
-          {salesReportData.products.map((product) => {
-            const invProduct   = inventory.find(p => p.id === product.product.id);
-            const currentPrice = invProduct?.price || 0;
-            const isExpanded   = expandedProductIds.has(product.product.id);
-
-            let prodRevenue = 0, prodCOGS = 0, prodShipping = 0, prodQtySold = 0;
-            (product.batches || []).forEach(batchData => {
-              const qty = batchData.totalSold || 0;
-              prodQtySold  += qty;
-              prodRevenue  += currentPrice * qty;
-              prodCOGS     += (batchData.batch?.costPrice || 0) * qty;
-              (batchData.sales || []).forEach(sale => {
-                const o = orders.find(ord => ord.id === (sale.orderId || sale.order_id));
-                prodShipping += parseFloat(o?.shipping?.shippingCost || 0);
+      (() => {
+        // Build order map from nested data
+        const orderMap = {};
+        (salesReportData.products || []).forEach(product => {
+          (product.batches || []).forEach(batchData => {
+            (batchData.sales || []).forEach(sale => {
+              const oid = sale.orderId || sale.order_id || 'unknown';
+              if (!orderMap[oid]) {
+                const matchedOrder = orders.find(o => o.id === oid);
+                orderMap[oid] = {
+                  orderId: oid,
+                  customer: sale.customerName || sale.customer_name || '—',
+                  date: sale.dateSold || sale.date_sold || '—',
+                  totalQty: 0,
+                  totalRevenue: 0,
+                  totalCost: 0,
+                  totalShipping: parseFloat(matchedOrder?.shipping?.shippingCost || 0),
+                  batches: [],
+                };
+              }
+              const qty = sale.quantitySold || sale.quantity_sold || 0;
+              const revenue = sale.revenue || 0;
+              const costPerUnit = sale.costPriceUsed || sale.cost_price_used || 0;
+              const cost = costPerUnit * qty;
+              orderMap[oid].totalQty += qty;
+              orderMap[oid].totalRevenue += revenue;
+              orderMap[oid].totalCost += cost;
+              orderMap[oid].batches.push({
+                batchId: batchData.batch?.id || '—',
+                productName: product.product?.name || '—',
+                qty,
+                costPerUnit,
+                sellPrice: sale.sellingPriceUsed || sale.selling_price_used || 0,
+                revenue,
+                cost,
+                profit: revenue - cost,
               });
             });
-            const prodGross  = prodRevenue - prodCOGS;
-            const prodNet    = prodGross - prodShipping;
+          });
+        });
 
-            return (
-              <div key={product.product.id}>
-                <div
-                  onClick={() => {
-                    const willExpand = !expandedProductIds.has(product.product.id);
-                    toggleProductExpand(product.product.id);
-                    if (willExpand) {
-                      product.batches?.forEach(b => b.batch?.id && fetchPriceHistory(b.batch.id));
-                    }
-                  }}
-                  className={`p-4 cursor-pointer transition ${isExpanded ? (darkMode ? 'bg-[#2FB7A1]/5' : 'bg-[#2FB7A1]/3') : (darkMode ? 'hover:bg-[#111827]' : 'hover:bg-[#F8FAFC]')}`}>
-                  <div className="flex items-center justify-between mb-3">
-                    <p className={`font-semibold text-sm ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>{product.product.name}</p>
-                    <div className="flex items-center gap-2">
-                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${prodNet >= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
-                        Net {formatCurrencyNaira(prodNet)}
-                      </span>
-                      <ChevronRight size={16} className={`transition-transform text-[#2FB7A1] ${isExpanded ? 'rotate-90' : ''}`} />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    {[
-                      { label: 'Units Sold',    value: prodQtySold },
-                      { label: 'Sell Price',    value: formatCurrencyNaira(currentPrice) },
-                      { label: 'Revenue',       value: formatCurrencyNaira(prodRevenue) },
-                      { label: 'COGS',          value: formatCurrencyNaira(prodCOGS) },
-                      { label: 'Gross Profit',  value: formatCurrencyNaira(prodGross),    color: prodGross >= 0 ? 'text-emerald-500' : 'text-red-500' },
-                      { label: 'Shipping',      value: formatCurrencyNaira(prodShipping) },
-                    ].map((s, i) => (
-                      <div key={i} className={`rounded-lg p-2.5 ${darkMode ? 'bg-[#111827]' : 'bg-[#F8FAFC]'}`}>
-                        <p className={`text-[10px] font-medium uppercase tracking-wide mb-0.5 ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>{s.label}</p>
-                        <p className={`text-sm font-bold ${s.color || (darkMode ? 'text-white' : 'text-[#0F172A]')}`}>{s.value}</p>
-                      </div>
+        const orderRows = Object.values(orderMap).sort((a, b) =>
+          new Date(b.date) - new Date(a.date)
+        );
+
+        if (orderRows.length === 0) {
+          return (
+            <div className={`rounded-xl border p-12 text-center ${darkMode ? 'bg-[#111827] border-[#1f2937]' : 'bg-white border-[#E3E8EF]'}`}>
+              <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>No sales data available.</p>
+            </div>
+          );
+        }
+
+        return (
+          <div className={`rounded-xl border overflow-hidden ${darkMode ? 'bg-[#111827] border-[#1f2937]' : 'bg-white border-[#E3E8EF]'}`}>
+
+            {/* Desktop Table */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className={`${darkMode ? 'bg-[#0d1117]' : 'bg-[#F9FAFB]'}`}>
+                    {['', 'Order ID', 'Customer', 'Date', 'Total Qty', 'Revenue', 'Cost', 'Shipping', 'Net Profit'].map((h, i) => (
+                      <th key={i} className={`px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wide border-b ${darkMode ? 'text-gray-500 border-[#1f2937]' : 'text-[#94A3B8] border-[#E3E8EF]'} ${i >= 4 ? 'text-right' : ''}`}>
+                        {h}
+                      </th>
                     ))}
-                  </div>
-                </div>
+                  </tr>
+                </thead>
+                <tbody>
+                  {orderRows.map((row) => {
+                    const isExpanded = expandedProductIds.has(row.orderId);
+                    const netProfit = row.totalRevenue - row.totalCost - row.totalShipping;
+                    return (
+                      <React.Fragment key={row.orderId}>
+                        <tr
+                          onClick={() => toggleProductExpand(row.orderId)}
+                          className={`border-b cursor-pointer transition-colors ${
+                            isExpanded
+                              ? darkMode ? 'bg-[#0d1117]' : 'bg-[#F0FDF9]'
+                              : darkMode ? 'border-[#1f2937] hover:bg-[#0d1117]' : 'border-[#F1F5F9] hover:bg-[#F8FAFC]'
+                          }`}
+                        >
+                          <td className="px-3 py-3 w-8">
+                            <ChevronRight size={14} className={`text-[#2FB7A1] transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                          </td>
+                          <td className="px-4 py-3 font-mono text-xs font-semibold text-[#2FB7A1]">{row.orderId}</td>
+                          <td className={`px-4 py-3 font-medium ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>{row.customer}</td>
+                          <td className={`px-4 py-3 ${darkMode ? 'text-gray-300' : 'text-[#64748B]'}`}>{row.date}</td>
+                          <td className={`px-4 py-3 text-right tabular-nums font-semibold ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>{row.totalQty}</td>
+                          <td className={`px-4 py-3 text-right tabular-nums ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>{formatCurrency(row.totalRevenue)}</td>
+                          <td className={`px-4 py-3 text-right tabular-nums ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>{formatCurrency(row.totalCost)}</td>
+                          <td className={`px-4 py-3 text-right tabular-nums ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>{formatCurrency(row.totalShipping)}</td>
+                          <td className={`px-4 py-3 text-right tabular-nums font-bold ${netProfit >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>{formatCurrency(netProfit)}</td>
+                        </tr>
 
-                {isExpanded && (
-                  <div className={`px-4 pb-4 ${darkMode ? 'bg-[#0d1117]' : 'bg-[#F8FAFC]'}`}>
-                    <p className={`text-[10px] font-bold uppercase tracking-widest pt-4 pb-2 ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>Batch Breakdown</p>
-                    <div className="space-y-2">
-                      {product.batches?.map((batchData, idx) => {
-                        const batch        = batchData.batch;
-                        const batchCost    = batch?.costPrice || 0;
-                        const qtySold      = batchData.totalSold || 0;
-                        const revenue      = currentPrice * qtySold;
-                        const cogs         = batchCost * qtySold;
-                        const grossProfit  = revenue - cogs;
-                        const batchShipping = (batchData.sales || []).reduce((s, sale) => {
-                          const o = orders.find(ord => ord.id === (sale.orderId || sale.order_id));
-                          return s + parseFloat(o?.shipping?.shippingCost || 0);
-                        }, 0);
-                        const netProfit = grossProfit - batchShipping;
+                        {isExpanded && (
+                          <tr>
+                            <td colSpan={9} className={`px-0 py-0 ${darkMode ? 'bg-[#020617]' : 'bg-[#F8FAFC]'}`}>
+                              <table className="w-full text-xs">
+                                <thead>
+                                  <tr className={`border-b ${darkMode ? 'border-[#1f2937]' : 'border-[#E3E8EF]'}`}>
+                                    {['Batch', 'Product', 'Qty', 'Cost/Unit', 'Sell Price', 'Revenue', 'Cost', 'Profit'].map((h, i) => (
+                                      <th key={i} className={`px-4 py-2 text-[10px] font-bold uppercase tracking-wide ${i === 0 ? 'pl-8 text-left' : i <= 1 ? 'text-left' : 'text-right'} ${darkMode ? 'text-gray-600' : 'text-[#94A3B8]'}`}>
+                                        {h}
+                                      </th>
+                                    ))}
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {row.batches.map((b, bi) => (
+                                    <tr key={bi} className={`border-b ${darkMode ? 'border-[#0d1117]' : 'border-[#F1F5F9]'}`}>
+                                      <td className="pl-8 pr-4 py-2 font-mono text-[#2FB7A1]">
+                                        <span className={`mr-2 ${darkMode ? 'text-gray-600' : 'text-[#CBD5E1]'}`}>↳</span>
+                                        {b.batchId}
+                                      </td>
+                                      <td className={`px-4 py-2 ${darkMode ? 'text-gray-300' : 'text-[#64748B]'}`}>{b.productName}</td>
+                                      <td className={`px-4 py-2 text-right tabular-nums ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>{b.qty}</td>
+                                      <td className={`px-4 py-2 text-right tabular-nums ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>{formatCurrency(b.costPerUnit)}</td>
+                                      <td className={`px-4 py-2 text-right tabular-nums font-semibold ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>{formatCurrency(b.sellPrice)}</td>
+                                      <td className={`px-4 py-2 text-right tabular-nums ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>{formatCurrency(b.revenue)}</td>
+                                      <td className={`px-4 py-2 text-right tabular-nums ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>{formatCurrency(b.cost)}</td>
+                                      <td className={`px-4 py-2 text-right tabular-nums font-semibold ${b.profit >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>{formatCurrency(b.profit)}</td>
+                                    </tr>
+                                  ))}
+                                  <tr className={`${darkMode ? 'bg-[#0d1117]' : 'bg-[#F0FDF9]'}`}>
+                                    <td colSpan={2} className={`pl-8 pr-4 py-2 text-xs font-bold ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>Order Total</td>
+                                    <td className={`px-4 py-2 text-right text-xs font-bold tabular-nums ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>{row.totalQty}</td>
+                                    <td colSpan={2} />
+                                    <td className={`px-4 py-2 text-right text-xs font-bold tabular-nums ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>{formatCurrency(row.totalRevenue)}</td>
+                                    <td className={`px-4 py-2 text-right text-xs font-bold tabular-nums ${darkMode ? 'text-gray-300' : 'text-[#64748B]'}`}>{formatCurrency(row.totalCost)}</td>
+                                    <td className={`px-4 py-2 text-right text-xs font-bold tabular-nums ${(row.totalRevenue - row.totalCost) >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                                      {formatCurrency(row.totalRevenue - row.totalCost)}
+                                    </td>
+                                  </tr>
+                                </tbody>
+                              </table>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
+                </tbody>
+                <tfoot>
+                  <tr className={`border-t-2 text-xs font-semibold ${darkMode ? 'bg-[#0d1117] border-[#1f2937]' : 'bg-[#F9FAFB] border-[#E3E8EF]'}`}>
+                    <td />
+                    <td colSpan={3} className={`px-4 py-3 ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>
+                      Total ({orderRows.length} orders)
+                    </td>
+                    <td className={`px-4 py-3 text-right tabular-nums ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>
+                      {orderRows.reduce((s, r) => s + r.totalQty, 0)}
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums text-[#2FB7A1]">
+                      {formatCurrency(orderRows.reduce((s, r) => s + r.totalRevenue, 0))}
+                    </td>
+                    <td className={`px-4 py-3 text-right tabular-nums ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>
+                      {formatCurrency(orderRows.reduce((s, r) => s + r.totalCost, 0))}
+                    </td>
+                    <td className={`px-4 py-3 text-right tabular-nums ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>
+                      {formatCurrency(orderRows.reduce((s, r) => s + r.totalShipping, 0))}
+                    </td>
+                    <td className={`px-4 py-3 text-right tabular-nums font-bold ${
+                      orderRows.reduce((s, r) => s + r.totalRevenue - r.totalCost - r.totalShipping, 0) >= 0
+                        ? 'text-emerald-500' : 'text-red-500'
+                    }`}>
+                      {formatCurrency(orderRows.reduce((s, r) => s + r.totalRevenue - r.totalCost - r.totalShipping, 0))}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
 
-                        return (
-                          <div key={idx} className={`rounded-xl border overflow-hidden ${darkMode ? 'border-[#1f2937]' : 'border-[#E3E8EF]'}`}>
-                            <div className={`flex items-center justify-between p-3 ${darkMode ? 'bg-[#111827]' : 'bg-white'}`}>
+            {/* Mobile Cards */}
+            <div className="md:hidden divide-y divide-[#F1F5F9] dark:divide-[#1f2937]">
+              {orderRows.map((row) => {
+                const isExpanded = expandedProductIds.has(row.orderId);
+                const netProfit = row.totalRevenue - row.totalCost - row.totalShipping;
+                return (
+                  <div key={row.orderId}>
+                    <div
+                      onClick={() => toggleProductExpand(row.orderId)}
+                      className={`p-4 cursor-pointer transition ${
+                        isExpanded
+                          ? darkMode ? 'bg-[#0d1117]' : 'bg-[#F0FDF9]'
+                          : darkMode ? 'hover:bg-[#0d1117]' : 'hover:bg-[#F8FAFC]'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <ChevronRight size={14} className={`text-[#2FB7A1] transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                          <span className="font-mono text-xs font-semibold text-[#2FB7A1]">{row.orderId}</span>
+                        </div>
+                        <span className={`text-xs ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>{row.date}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <p className={`font-semibold text-sm ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>{row.customer}</p>
+                        <p className={`font-bold text-sm ${netProfit >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>{formatCurrency(netProfit)}</p>
+                      </div>
+                      <div className={`flex gap-4 mt-1 text-xs ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>
+                        <span>Qty: {row.totalQty}</span>
+                        <span>Revenue: {formatCurrency(row.totalRevenue)}</span>
+                      </div>
+                    </div>
+
+                    {isExpanded && (
+                      <div className={`px-4 pb-4 space-y-2 ${darkMode ? 'bg-[#020617]' : 'bg-[#F8FAFC]'}`}>
+                        <p className={`text-[10px] font-bold uppercase tracking-widest pt-3 pb-1 ${darkMode ? 'text-gray-600' : 'text-[#94A3B8]'}`}>
+                          Batch Breakdown
+                        </p>
+                        {row.batches.map((b, bi) => (
+                          <div key={bi} className={`rounded-lg border p-3 ${darkMode ? 'bg-[#111827] border-[#1f2937]' : 'bg-white border-[#E3E8EF]'}`}>
+                            <div className="flex items-center justify-between mb-2">
                               <div>
-                                <p className={`text-xs font-mono font-semibold ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>{batch?.id || '—'}</p>
-                                <p className={`text-[10px] mt-0.5 ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>
-                                  {batch?.dateAdded || '—'} · Cost: {formatCurrencyNaira(batchCost)} · Sell: {formatCurrencyNaira(currentPrice)}
-                                </p>
+                                <span className={`mr-1 ${darkMode ? 'text-gray-600' : 'text-[#CBD5E1]'}`}>↳</span>
+                                <span className="font-mono text-xs text-[#2FB7A1] font-semibold">{b.batchId}</span>
                               </div>
-                              <div className="text-right">
-                                <p className={`text-xs font-bold ${netProfit >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>Net {formatCurrencyNaira(netProfit)}</p>
-                                <p className={`text-[10px] ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>Gross {formatCurrencyNaira(grossProfit)}</p>
-                              </div>
+                              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${darkMode ? 'bg-[#1f2937] text-gray-400' : 'bg-[#F1F5F9] text-[#64748B]'}`}>
+                                {b.productName}
+                              </span>
                             </div>
-                            <div className={`grid grid-cols-4 divide-x border-t text-center ${darkMode ? 'divide-[#1f2937] border-[#1f2937] bg-[#0d1117]' : 'divide-[#F1F5F9] border-[#F1F5F9] bg-[#F8FAFC]'}`}>
+                            <div className="grid grid-cols-3 gap-2 text-xs">
                               {[
-                                { label: 'Sold',     value: qtySold },
-                                { label: 'Revenue',  value: formatCurrencyNaira(revenue) },
-                                { label: 'COGS',     value: formatCurrencyNaira(cogs) },
-                                { label: 'Shipping', value: formatCurrencyNaira(batchShipping) },
+                                { label: 'Qty',        value: b.qty },
+                                { label: 'Cost/Unit',  value: formatCurrency(b.costPerUnit) },
+                                { label: 'Sell Price', value: formatCurrency(b.sellPrice) },
+                                { label: 'Revenue',    value: formatCurrency(b.revenue) },
+                                { label: 'Cost',       value: formatCurrency(b.cost) },
+                                { label: 'Profit',     value: formatCurrency(b.profit), color: b.profit >= 0 ? 'text-emerald-500' : 'text-red-500' },
                               ].map((s, i) => (
-                                <div key={i} className="py-2">
+                                <div key={i}>
                                   <p className={`text-[9px] font-semibold uppercase tracking-wide ${darkMode ? 'text-gray-600' : 'text-[#94A3B8]'}`}>{s.label}</p>
-                                  <p className={`text-xs font-bold ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>{s.value}</p>
+                                  <p className={`font-semibold mt-0.5 ${s.color || (darkMode ? 'text-gray-300' : 'text-[#0F172A]')}`}>{s.value}</p>
                                 </div>
                               ))}
                             </div>
                           </div>
-                        );
-                      })}
-                    </div>
+                        ))}
+                        <div className={`rounded-lg p-3 flex justify-between text-xs font-bold ${darkMode ? 'bg-[#0d1117] text-gray-300' : 'bg-[#F0FDF9] text-[#0F172A]'}`}>
+                          <span>Order Total — {row.totalQty} units</span>
+                          <span className={netProfit >= 0 ? 'text-emerald-500' : 'text-red-500'}>{formatCurrency(netProfit)}</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()
     ) : (
       <div className={`rounded-xl border p-8 text-center ${darkMode ? 'bg-[#1A1A1A] border-[#2A2A2A]' : 'bg-white border-[#E3E8EF]'}`}>
         <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>No sales data available.</p>
