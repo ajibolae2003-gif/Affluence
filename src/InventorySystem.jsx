@@ -6672,6 +6672,24 @@ const toggleProductExpand = (productId) => {
     required
   />
 </div>
+<div>
+    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+      Batch ID <span className="text-red-500">*</span>
+    </label>
+    <input
+      name="batchId"
+      placeholder="e.g. BATCH-001"
+      className={`w-full px-4 py-3 border rounded-lg transition-all font-mono ${
+        darkMode
+          ? 'bg-[#1A1A1A] border-[#2A2A2A] text-white placeholder-gray-400 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
+          : 'bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-[#2FB7A1] focus:border-[#2FB7A1]'
+      }`}
+      required
+    />
+    <p className={`mt-1 text-xs ${darkMode ? 'text-gray-500' : 'text-[#94A3B8]'}`}>
+      Unique identifier for this stock batch
+    </p>
+  </div>
   </div>
 
   {/* ── Description ── */}
