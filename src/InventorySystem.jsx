@@ -5243,7 +5243,7 @@ const toggleProductExpand = (productId) => {
               <table className="w-full text-sm">
                 <thead>
                   <tr className={`${darkMode ? 'bg-[#0d1117]' : 'bg-[#F9FAFB]'}`}>
-                    {['', 'Order ID', 'Customer', 'Date', 'Remaining', 'Total Qty', 'Revenue', 'Cost', 'Gross Profit', 'Shipping', 'Net Profit'].map((h, i) => (
+                    {['', 'Order ID', 'Customer', 'Date', 'Remaining', 'Qty Sold', 'Revenue', 'Cost', 'Gross Profit', 'Shipping', 'Net Profit'].map((h, i) => (
                   <th key={i} className={`px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wide border-b ${darkMode ? 'text-gray-500 border-[#1f2937]' : 'text-[#94A3B8] border-[#E3E8EF]'} ${i >= 4 ? 'text-right' : ''}`}>
                     {h}
                   </th>
@@ -8527,7 +8527,7 @@ const toggleProductExpand = (productId) => {
                         FIFO Cost Breakdown
                       </p>
                       <p className="text-xs text-[#64748B] dark:text-gray-400">
-                        Total Qty: {breakdown?.summary?.totalQuantity ?? order.quantity}
+                        Qty Sold: {breakdown?.summary?.totalQuantity ?? order.quantity}
                       </p>
                     </div>
                     {loadingSaleProfitBreakdown ? (
