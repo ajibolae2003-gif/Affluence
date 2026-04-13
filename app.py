@@ -685,11 +685,8 @@ def add_inventory():
         return jsonify({'error': str(e), 'details': error_details}), 500
 
 @app.route('/api/inventory/<product_id>', methods=['PATCH'])
+
 def update_inventory_quantity(product_id):
-    """Update product fields (quantity for staff to add stock, price/cost/label for admin edits)
-    
-    Note: For quantity updates, creates a new batch. For price updates, updates the latest batch.
-    """
     try:
         product = Product.query.filter_by(id=product_id).first()
         if not product:
@@ -702,6 +699,8 @@ def update_inventory_quantity(product_id):
         if not data:
             return jsonify({'error': 'No data provided'}), 400
         
+        quantity_was_added = False  # ← ADD THIS FLAG
+
         # Handle quantity addition - create a new batch
         if 'quantity' in data:
             try:
@@ -709,22 +708,19 @@ def update_inventory_quantity(product_id):
                 if quantity_to_add <= 0:
                     return jsonify({'error': 'Quantity must be greater than 0'}), 400
                 
-                # Get the latest batch to use its pricing
                 latest_batch = Batch.query.filter_by(product_id=product_id)\
                     .order_by(Batch.date_added.desc()).first()
                 
                 if not latest_batch:
                     return jsonify({'error': 'No batches found for this product. Please add inventory first.'}), 400
                 
-                # Determine pricing for the new batch.
-                # If the client sends explicit cost/price, use those; otherwise fall back to latest batch.
                 try:
                     if 'cost' in data and data['cost'] not in (None, ''):
                         new_cost_price = float(data['cost'])
                     else:
                         new_cost_price = float(latest_batch.cost_price)
                 except (ValueError, TypeError):
-                    return jsonify({'error': 'Invalid cost value for new batch'}, 400)
+                    return jsonify({'error': 'Invalid cost value for new batch'}), 400
 
                 try:
                     if 'price' in data and data['price'] not in (None, ''):
@@ -732,9 +728,8 @@ def update_inventory_quantity(product_id):
                     else:
                         new_selling_price = float(latest_batch.selling_price)
                 except (ValueError, TypeError):
-                    return jsonify({'error': 'Invalid price value for new batch'}, 400)
+                    return jsonify({'error': 'Invalid price value for new batch'}), 400
 
-                # Create a new batch with its own pricing (FIFO-aware via Batch model)
                 from datetime import date
                 import uuid
                 new_batch_id = f"{product_id}-BATCH-{str(uuid.uuid4())[:8].upper()}"
@@ -753,12 +748,114 @@ def update_inventory_quantity(product_id):
                 )
                 db.session.add(new_batch)
 
-                # Keep legacy product pricing roughly in sync with the newest batch
                 product.cost = new_cost_price
                 product.price = new_selling_price
                 
+                quantity_was_added = True  # ← SET THE FLAG
+
             except (ValueError, TypeError) as e:
                 return jsonify({'error': f'Invalid quantity value: {str(e)}'}), 400
+        
+        # Only run price update block if we're NOT adding quantity
+        # (when adding quantity, prices are already set on the new batch above)
+        if not quantity_was_added:  # ← WRAP THIS ENTIRE BLOCK
+            if 'price' in data or 'cost' in data or 'sellingPrice' in data or 'costPrice' in data:
+                latest_batch = Batch.query.filter_by(product_id=product_id)\
+                    .order_by(Batch.date_added.desc()).first()
+                
+                if not latest_batch:
+                    return jsonify({'error': 'No batches found for this product'}), 400
+                
+                price_changes = []
+                
+                if 'price' in data or 'sellingPrice' in data:
+                    new_selling = float(data.get('sellingPrice') or data.get('price'))
+                    if new_selling != latest_batch.selling_price:
+                        price_change = PriceChange(
+                            batch_id=latest_batch.id,
+                            change_type='selling',
+                            old_price=latest_batch.selling_price,
+                            new_price=new_selling,
+                            changed_by=data.get('changedBy', 'System'),
+                            notes=data.get('notes', 'Price updated via API')
+                        )
+                        db.session.add(price_change)
+                        price_changes.append(price_change.to_dict())
+                        latest_batch.selling_price = new_selling
+                
+                if 'cost' in data or 'costPrice' in data:
+                    new_cost = float(data.get('costPrice') or data.get('cost'))
+                    if new_cost != latest_batch.cost_price:
+                        price_change = PriceChange(
+                            batch_id=latest_batch.id,
+                            change_type='cost',
+                            old_price=latest_batch.cost_price,
+                            new_price=new_cost,
+                            changed_by=data.get('changedBy', 'System'),
+                            notes=data.get('notes', 'Cost updated via API')
+                        )
+                        db.session.add(price_change)
+                        price_changes.append(price_change.to_dict())
+                        latest_batch.cost_price = new_cost
+        
+        # Shipping cost and label updates (these can always run)
+        if 'shippingCost' in data:
+            latest_batch = Batch.query.filter_by(product_id=product_id)\
+                .order_by(Batch.date_added.desc()).first()
+            if latest_batch:
+                try:
+                    latest_batch.shipping_cost = float(data['shippingCost']) if data['shippingCost'] not in (None, '') else 0.0
+                except (ValueError, TypeError):
+                    return jsonify({'error': 'Invalid shipping cost value'}), 400
+        
+        if 'label' in data:
+            product.label = data['label'] or None
+
+        if 'setQuantity' in data:
+            try:
+                new_qty = int(data['setQuantity'])
+                if new_qty < 0:
+                    return jsonify({'error': 'Quantity cannot be negative'}), 400
+                
+                batches = Batch.query.filter_by(product_id=product_id).all()
+                
+                latest_batch = Batch.query.filter_by(product_id=product_id)\
+                    .order_by(Batch.date_added.desc()).first()
+                
+                if not latest_batch:
+                    return jsonify({'error': 'No batches found for this product'}), 400
+                
+                current_remaining = sum(b.quantity_remaining for b in batches)
+                diff = new_qty - current_remaining
+                
+                new_latest_remaining = latest_batch.quantity_remaining + diff
+                if new_latest_remaining < 0:
+                    return jsonify({'error': f'Cannot set quantity to {new_qty}.'}), 400
+                
+                latest_batch.quantity_remaining = new_latest_remaining
+                if diff > 0:
+                    latest_batch.quantity_added += diff
+                    
+            except (ValueError, TypeError) as e:
+                return jsonify({'error': f'Invalid setQuantity value: {str(e)}'}), 400
+
+        db.session.commit()
+        
+        batches = Batch.query.filter_by(product_id=product_id).all()
+        product_dict = product.to_dict()
+        product_dict['quantity'] = sum(b.quantity_remaining for b in batches)
+        product_dict['sold'] = sum(b.quantity_sold for b in batches)
+        product_dict['batches'] = [b.to_dict() for b in batches]
+        
+        return jsonify({
+            'message': 'Product updated successfully',
+            'product': product_dict
+        }), 200
+    except Exception as e:
+        db.session.rollback()
+        import traceback
+        print(f"Error updating inventory: {traceback.format_exc()}")
+        return jsonify({'error': str(e)}), 500
         
         # Handle batch price updates - update the latest batch
         if 'price' in data or 'cost' in data or 'sellingPrice' in data or 'costPrice' in data:
