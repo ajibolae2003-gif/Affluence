@@ -6654,15 +6654,22 @@ const toggleProductExpand = (productId) => {
     id="dateReceived-picker"
     max={new Date().toISOString().split('T')[0]}
     onChange={(e) => {
-      const val = e.target.value; // YYYY-MM-DD
+      const val = e.target.value;
       if (!val) return;
       const d = new Date(val + 'T00:00:00');
       const formatted = d.toLocaleDateString('en-GB', {
         day: '2-digit',
         month: 'short',
         year: 'numeric',
-      }).replace(/ /g, '-'); // "05-Mar-2026"
+      }).replace(/ /g, '-');
       document.getElementById('dateReceived-hidden').value = formatted;
+    
+      const day = String(d.getDate()).padStart(2, '0');
+      const mon = d.toLocaleDateString('en-GB', { month: 'short' }).toUpperCase();
+      const yr  = d.getFullYear();
+      const rand = Math.floor(100000 + Math.random() * 900000);
+      const batchInput = document.getElementById('batchId-input');
+      if (batchInput) batchInput.value = `${day}${mon}${yr}-${rand}`;
     }}
     className={`w-full px-4 py-3 border rounded-lg transition-all ${
       darkMode
@@ -6678,6 +6685,7 @@ const toggleProductExpand = (productId) => {
     </label>
     <input
       name="batchId"
+      id="batchId-input"
       placeholder="e.g. BATCH-001"
       className={`w-full px-4 py-3 border rounded-lg transition-all font-mono ${
         darkMode
