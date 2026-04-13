@@ -5298,69 +5298,48 @@ const toggleProductExpand = (productId) => {
                                   </tr>
                                 </thead>
                                 <tbody>
-                                {row.batches.map((b, bi) => {
-                                      const allocatedShipping = row.totalQty > 0 ? (row.totalShipping / row.totalQty) * b.qty : 0;
-                                      const netBatchProfit = b.profit - allocatedShipping;
-                                      const batchProduct = inventory.find(p => p.name === b.productName || p.id === b.productId);
-                                      const batchRemaining = batchProduct?.quantity ?? 0;
-                                      return (
-                                        <tr key={bi} className={`border-b ${darkMode ? 'border-[#0d1117]' : 'border-[#F1F5F9]'}`}>
-                                          <td className="pl-8 pr-4 py-2 font-mono text-[#2FB7A1]">
-                                            <span className={`mr-2 ${darkMode ? 'text-gray-600' : 'text-[#CBD5E1]'}`}>↳</span>
-                                            {b.batchId}
-                                          </td>
-                                          <td className={`px-4 py-2 ${darkMode ? 'text-gray-300' : 'text-[#64748B]'}`}>{b.productName}</td>
-                                          <td className={`px-4 py-2 text-right tabular-nums font-semibold ${batchRemaining === 0 ? 'text-red-500' : batchRemaining < 50 ? 'text-amber-500' : darkMode ? 'text-gray-300' : 'text-[#64748B]'}`}>
-                                            {row.batches.map((b, bi) => {
-                                              const allocatedShipping = row.totalQty > 0 ? (row.totalShipping / row.totalQty) * b.qty : 0;
-                                              const netBatchProfit = b.profit - allocatedShipping;
-                                              const batchProduct = inventory.find(p => p.name === b.productName || p.id === b.productId);
-                                              const batchRemaining = batchProduct?.quantity ?? 0;
-                                              return (
-                                                <tr key={bi} className={`border-b ${darkMode ? 'border-[#0d1117]' : 'border-[#F1F5F9]'}`}>
-                                                  <td className="pl-8 pr-4 py-2 font-mono text-[#2FB7A1]">
-                                                    <span className={`mr-2 ${darkMode ? 'text-gray-600' : 'text-[#CBD5E1]'}`}>↳</span>
-                                                    {b.batchId}
-                                                  </td>
-                                                  <td className={`px-4 py-2 ${darkMode ? 'text-gray-300' : 'text-[#64748B]'}`}>{b.productName}</td>
-                                                  <td className={`px-4 py-2 text-right tabular-nums font-semibold ${batchRemaining === 0 ? 'text-red-500' : batchRemaining < 50 ? 'text-amber-500' : darkMode ? 'text-gray-300' : 'text-[#64748B]'}`}>
-                                                    {batchRemaining.toLocaleString()}
-                                                  </td>
-                                                  <td className={`px-4 py-2 text-right tabular-nums ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>{b.qty}</td>
-                                                  <td className={`px-4 py-2 text-right tabular-nums ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>{formatCurrency(b.costPerUnit)}</td>
-                                                  <td className={`px-4 py-2 text-right tabular-nums font-semibold ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>{formatCurrency(b.sellPrice)}</td>
-                                                  <td className={`px-4 py-2 text-right tabular-nums ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>{formatCurrency(b.revenue)}</td>
-                                                  <td className={`px-4 py-2 text-right tabular-nums ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>{formatCurrency(b.cost)}</td>
-                                                  <td className={`px-4 py-2 text-right tabular-nums ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>{formatCurrency(allocatedShipping)}</td>
-                                                  <td className={`px-4 py-2 text-right tabular-nums font-semibold ${netBatchProfit >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>{formatCurrency(netBatchProfit)}</td>
-                                                </tr>
-                                              );
-                                            })}
-                                          </td>
-                                          <td className={`px-4 py-2 text-right tabular-nums ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>{b.qty}</td>
-                                          <td className={`px-4 py-2 text-right tabular-nums ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>{formatCurrency(b.costPerUnit)}</td>
-                                          <td className={`px-4 py-2 text-right tabular-nums font-semibold ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>{formatCurrency(b.sellPrice)}</td>
-                                          <td className={`px-4 py-2 text-right tabular-nums ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>{formatCurrency(b.revenue)}</td>
-                                          <td className={`px-4 py-2 text-right tabular-nums ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>{formatCurrency(b.cost)}</td>
-                                          <td className={`px-4 py-2 text-right tabular-nums ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>{formatCurrency(allocatedShipping)}</td>
-                                          <td className={`px-4 py-2 text-right tabular-nums font-semibold ${netBatchProfit >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>{formatCurrency(netBatchProfit)}</td>
-                                        </tr>
-                                      );
-                                    })}
-                                 <tr className={`${darkMode ? 'bg-[#0d1117]' : 'bg-[#F0FDF9]'}`}>
-                                      <td colSpan={2} className={`pl-8 pr-4 py-2 text-xs font-bold ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>Order Total</td>
-                                      <td />
-                                      <td className={`px-4 py-2 text-right text-xs font-bold tabular-nums ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>{row.totalQty}</td>
-                                      <td colSpan={2} />
-                                      <td className={`px-4 py-2 text-right text-xs font-bold tabular-nums ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>{formatCurrency(row.totalRevenue)}</td>
-                                      <td className={`px-4 py-2 text-right text-xs font-bold tabular-nums ${darkMode ? 'text-gray-300' : 'text-[#64748B]'}`}>{formatCurrency(row.totalCost)}</td>
-                                      <td className={`px-4 py-2 text-right text-xs font-bold tabular-nums ${(row.totalRevenue - row.totalCost) >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                                        {formatCurrency(row.totalRevenue - row.totalCost)}
-                                      </td>
-                                      <td className={`px-4 py-2 text-right text-xs font-bold tabular-nums ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>{formatCurrency(row.totalShipping)}</td>
-                                      <td className={`px-4 py-2 text-right text-xs font-bold tabular-nums ${netProfit >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>{formatCurrency(netProfit)}</td>
-                                    </tr>
-                                </tbody>
+  {row.batches.map((b, bi) => {
+    const allocatedShipping = row.totalQty > 0 ? (row.totalShipping / row.totalQty) * b.qty : 0;
+    const netBatchProfit = b.profit - allocatedShipping;
+    const batchProduct = inventory.find(p => p.name === b.productName || p.id === b.productId);
+    const batchRemaining = batchProduct?.quantity ?? 0;
+    return (
+      <tr key={bi} className={`border-b ${darkMode ? 'border-[#0d1117]' : 'border-[#F1F5F9]'}`}>
+        <td className="pl-8 pr-4 py-2 font-mono text-[#2FB7A1]">
+          <span className={`mr-2 ${darkMode ? 'text-gray-600' : 'text-[#CBD5E1]'}`}>↳</span>
+          {b.batchId}
+        </td>
+        <td className={`px-4 py-2 ${darkMode ? 'text-gray-300' : 'text-[#64748B]'}`}>{b.productName}</td>
+        <td className={`px-4 py-2 text-right tabular-nums font-semibold ${
+          batchRemaining === 0 ? 'text-red-500' : batchRemaining < 50 ? 'text-amber-500' : darkMode ? 'text-gray-300' : 'text-[#64748B]'
+        }`}>
+          {batchRemaining.toLocaleString()}
+        </td>
+        <td className={`px-4 py-2 text-right tabular-nums ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>{b.qty}</td>
+        <td className={`px-4 py-2 text-right tabular-nums ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>{formatCurrency(b.costPerUnit)}</td>
+        <td className={`px-4 py-2 text-right tabular-nums font-semibold ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>{formatCurrency(b.sellPrice)}</td>
+        <td className={`px-4 py-2 text-right tabular-nums ${darkMode ? 'text-gray-300' : 'text-[#0F172A]'}`}>{formatCurrency(b.revenue)}</td>
+        <td className={`px-4 py-2 text-right tabular-nums ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>{formatCurrency(b.cost)}</td>
+        <td className={`px-4 py-2 text-right tabular-nums ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>{formatCurrency(allocatedShipping)}</td>
+        <td className={`px-4 py-2 text-right tabular-nums font-semibold ${netBatchProfit >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>{formatCurrency(netBatchProfit)}</td>
+      </tr>
+    );
+  })}
+  <tr className={`${darkMode ? 'bg-[#0d1117]' : 'bg-[#F0FDF9]'}`}>
+    <td colSpan={2} className={`pl-8 pr-4 py-2 text-xs font-bold ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>Order Total</td>
+    <td />
+    <td className={`px-4 py-2 text-right text-xs font-bold tabular-nums ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>{row.totalQty}</td>
+    <td colSpan={2} />
+    <td className={`px-4 py-2 text-right text-xs font-bold tabular-nums ${darkMode ? 'text-white' : 'text-[#0F172A]'}`}>{formatCurrency(row.totalRevenue)}</td>
+    <td className={`px-4 py-2 text-right text-xs font-bold tabular-nums ${darkMode ? 'text-gray-300' : 'text-[#64748B]'}`}>{formatCurrency(row.totalCost)}</td>
+    <td className={`px-4 py-2 text-right text-xs font-bold tabular-nums ${(row.totalRevenue - row.totalCost) >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+      {formatCurrency(row.totalRevenue - row.totalCost)}
+    </td>
+    <td className={`px-4 py-2 text-right text-xs font-bold tabular-nums ${darkMode ? 'text-gray-400' : 'text-[#64748B]'}`}>{formatCurrency(row.totalShipping)}</td>
+    <td className={`px-4 py-2 text-right text-xs font-bold tabular-nums ${netProfit >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>{formatCurrency(netProfit)}</td>
+  </tr>
+</tbody>
+
                               </table>
                             </td>
                           </tr>
