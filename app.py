@@ -667,6 +667,7 @@ def add_inventory():
         )
         
         db.session.add(batch)
+        db.session.flush()  # ensure batch gets its ID
         db.session.commit()
         
         return jsonify({
@@ -1010,7 +1011,7 @@ def get_orders():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/orders', methods=['POST'])
+
 @app.route('/api/orders', methods=['POST'])
 def add_order():
     try:
