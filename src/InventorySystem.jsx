@@ -6646,7 +6646,7 @@ const toggleProductExpand = (productId) => {
         Date Added <span className="text-red-500">*</span>
       </label>
       <input
-        name="dateReceived"
+        name="dateReceivedss"
         type="text"
         placeholder="e.g. 05-Mar-2026"
         className={`w-full px-4 py-3 border rounded-lg transition-all ${
