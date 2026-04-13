@@ -3758,19 +3758,7 @@ const toggleProductExpand = (productId) => {
           <input
             type="text"
             value={newCategoryId}
-            onChange={e => {
-              const name = e.target.value;
-              setNewCategoryName(name);
-              // Auto-generate ID from first letters of each word, max 4 chars, uppercase
-              const autoId = name
-                .trim()
-                .split(/\s+/)
-                .map(w => w[0] || '')
-                .join('')
-                .toUpperCase()
-                .slice(0, 4);
-              setNewCategoryId(autoId);
-            }}
+            onChange={e => setNewCategoryId(e.target.value.toUpperCase())}
             placeholder="e.g. SUPP, SKIN..."
             className={`w-full px-4 py-2.5 border rounded-lg text-sm focus:ring-2 focus:ring-[#2FB7A1] focus:border-transparent font-mono ${
               darkMode ? 'bg-[#0d1117] border-[#1f2937] text-white placeholder-gray-500' : 'bg-white border-[#E3E8EF] text-[#0F172A]'
