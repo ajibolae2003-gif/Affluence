@@ -497,7 +497,7 @@ def get_inventory():
             if batches:
                 latest_batch = max(
                     batches,
-                    key=lambda b: b.date_added or datetime.min.replace(tzinfo=timezone.utc)
+                    key=lambda b: b.created_at or datetime.min.replace(tzinfo=timezone.utc)
                 )
             if latest_batch:
                 product_dict['price'] = float(latest_batch.selling_price)
